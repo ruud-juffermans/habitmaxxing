@@ -1,11 +1,33 @@
 import { useEffect, useState } from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { api } from '../api';
 import type { Habit, HabitGroup, HabitType } from '../types';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
 
 const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
 const DEFAULT_COLOR = '#3357ff';
+
+function TrashIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
 
 export function Settings() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -229,21 +251,21 @@ export function Settings() {
             <tbody>
               {habits.map((h) => (
                 <tr key={h.id}>
-                  <Td>
+                  <Td data-label="Name" $full>
                     <Input
                       value={h.name}
                       onChange={(e) => setHabits((prev) => prev.map((x) => x.id === h.id ? { ...x, name: e.target.value } : x))}
                       onBlur={(e) => e.target.value !== '' && onUpdate(h.id, { name: e.target.value })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Description" $full>
                     <Input
                       value={h.description ?? ''}
                       onChange={(e) => setHabits((prev) => prev.map((x) => x.id === h.id ? { ...x, description: e.target.value } : x))}
                       onBlur={(e) => onUpdate(h.id, { description: e.target.value || null })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Type">
                     <Select
                       value={h.type}
                       onChange={(e) => onUpdate(h.id, { type: e.target.value as HabitType })}
@@ -251,7 +273,7 @@ export function Settings() {
                       {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </Select>
                   </Td>
-                  <Td>
+                  <Td data-label="Group">
                     <Select
                       value={h.groupId ?? ''}
                       onChange={(e) => onUpdate(h.id, { groupId: e.target.value || null })}
@@ -262,14 +284,14 @@ export function Settings() {
                       ))}
                     </Select>
                   </Td>
-                  <Td>
+                  <Td data-label="Unit">
                     <Input
                       value={h.unit ?? ''}
                       onChange={(e) => setHabits((prev) => prev.map((x) => x.id === h.id ? { ...x, unit: e.target.value } : x))}
                       onBlur={(e) => onUpdate(h.id, { unit: e.target.value || null })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Min">
                     <Input
                       type="number"
                       value={h.min != null ? String(h.min) : ''}
@@ -277,7 +299,7 @@ export function Settings() {
                       onBlur={(e) => onUpdate(h.id, { min: e.target.value === '' ? null : Number(e.target.value) })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Max">
                     <Input
                       type="number"
                       value={h.max != null ? String(h.max) : ''}
@@ -285,7 +307,7 @@ export function Settings() {
                       onBlur={(e) => onUpdate(h.id, { max: e.target.value === '' ? null : Number(e.target.value) })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Order">
                     <Input
                       type="number"
                       value={String(h.sortOrder)}
@@ -293,15 +315,18 @@ export function Settings() {
                       onBlur={(e) => onUpdate(h.id, { sortOrder: Number(e.target.value) })}
                     />
                   </Td>
-                  <Td>
+                  <Td data-label="Archived">
                     <input
                       type="checkbox"
                       checked={h.archived}
                       onChange={(e) => onUpdate(h.id, { archived: e.target.checked })}
                     />
                   </Td>
-                  <Td>
-                    <Button variant="danger" onClick={() => onDelete(h.id)}>Delete</Button>
+                  <Td data-label="" $full>
+                    <DeleteButton variant="danger" onClick={() => onDelete(h.id)}>
+                      <TrashIcon />
+                      Delete
+                    </DeleteButton>
                   </Td>
                 </tr>
               ))}
@@ -355,6 +380,14 @@ const GroupAddRow = styled.div`
   grid-template-columns: 1fr 48px auto;
   gap: ${({ theme }) => theme.space.sm};
   margin-bottom: ${({ theme }) => theme.space.md};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    grid-template-columns: 1fr 48px;
+
+    & > button {
+      grid-column: 1 / -1;
+    }
+  }
 `;
 
 const GroupList = styled.div`
@@ -400,6 +433,30 @@ const Table = styled.table`
   @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
     min-width: 720px;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    min-width: 0;
+    display: block;
+
+    colgroup,
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: block;
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: ${({ theme }) => theme.space.sm};
+      padding: ${({ theme }) => theme.space.md};
+      margin-bottom: ${({ theme }) => theme.space.md};
+      border: 1px solid ${({ theme }) => theme.colors.border};
+      border-radius: ${({ theme }) => theme.radii.md};
+    }
+  }
 `;
 
 const Th = styled.th`
@@ -411,7 +468,7 @@ const Th = styled.th`
   color: ${({ theme }) => theme.colors.textMuted};
 `;
 
-const Td = styled.td`
+const Td = styled.td<{ $full?: boolean }>`
   padding: ${({ theme }) => theme.space.xs};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   vertical-align: middle;
@@ -423,7 +480,39 @@ const Td = styled.td`
     box-sizing: border-box;
   }
 
+  input[type='checkbox'] {
+    width: auto;
+  }
+
   button {
     width: 100%;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: ${({ theme }) => theme.space.xs};
+    padding: 0;
+    border-bottom: none;
+    ${({ $full }) => $full && css`grid-column: 1 / -1;`}
+
+    &::before {
+      content: attr(data-label);
+      font-size: ${({ theme }) => theme.fontSizes.xs};
+      color: ${({ theme }) => theme.colors.textMuted};
+      font-weight: ${({ theme }) => theme.fontWeights.medium};
+    }
+
+    &[data-label='']::before {
+      display: none;
+    }
+  }
+`;
+
+const DeleteButton = styled(Button)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${({ theme }) => theme.space.xs};
 `;

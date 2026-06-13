@@ -23,6 +23,7 @@ The full product spec lives in [`prd.md`](./prd.md).
 
 ## Features
 
+- **Accounts & auth** — email/password sign-up with email verification, secure httpOnly cookie sessions, and password reset by email. All habit data is scoped per user.
 - **Flexible habit types** — boolean, integer, decimal, score, time-of-day, duration, free text.
 - **Habit groups** — colour-coded categories that flow through the UI (today view, history calendar, stats).
 - **Today view** — log every habit for the current day in one place.
@@ -91,7 +92,16 @@ docker compose up -d
 
 Open <http://localhost:5173>.
 
-The first boot runs Prisma migrations and seeds a starter set of habits. Subsequent starts reuse the existing volume.
+The first boot runs Prisma migrations and seeds a starter set of habits owned by a ready-to-use demo account. Subsequent starts reuse the existing volume.
+
+**Sign in with the seeded demo account:**
+
+- Email: `demo@habitmaxxing.local` (already verified)
+- Password: `password123`
+
+(Override with `SEED_USER_EMAIL` / `SEED_USER_PASSWORD`.)
+
+Or register your own account from the **Create account** screen. In local dev no SMTP server is configured, so verification and password-reset **emails are printed to the server logs** (`docker compose logs -f server`) — copy the link from there to complete the flow. Configure `SMTP_*` to send real email.
 
 ## Configuration
 
@@ -109,6 +119,19 @@ All configuration is environment-driven via `.env` (see [`.env.example`](./.env.
 | `VITE_API_URL`      | `http://localhost:3001`                                                | API base URL the client targets      |
 | `VITE_APP_TZ`       | `Europe/Amsterdam`                                                     | Timezone the client uses for "today"  |
 | `APP_TZ`            | `Europe/Amsterdam`                                                     | Timezone the server uses for stats day boundaries |
+| `APP_URL`           | `http://localhost:5173`                                                | Frontend URL used to build links in emails |
+| `CORS_ORIGIN`       | `http://localhost:5173`                                                | Allowed browser origin(s) for credentialed CORS (comma separated) |
+| `SESSION_TTL_DAYS`  | `30`                                                                   | Session/cookie lifetime |
+| `EMAIL_VERIFICATION_TTL_HOURS` | `24`                                                        | Verification-link validity |
+| `PASSWORD_RESET_TTL_MINUTES` | `60`                                                          | Reset-link validity |
+| `BCRYPT_ROUNDS`     | `12`                                                                   | Password hashing cost |
+| `SMTP_HOST`         | _(empty)_                                                              | SMTP server. Empty ⇒ emails logged to console |
+| `SMTP_PORT`         | `587`                                                                  | SMTP port |
+| `SMTP_SECURE`       | `false`                                                                | Use TLS on connect (set `true` for port 465) |
+| `SMTP_USER` / `SMTP_PASS` | _(empty)_                                                        | SMTP credentials |
+| `MAIL_FROM`         | `habitmaxxing <no-reply@habitmaxxing.local>`                           | From address on outgoing email |
+| `SEED_USER_EMAIL`   | `demo@habitmaxxing.local`                                              | Demo account created by the seed |
+| `SEED_USER_PASSWORD`| `password123`                                                          | Demo account password |
 
 > Keep `APP_TZ` and `VITE_APP_TZ` in sync so the client and server agree on where each day starts.
 
@@ -175,9 +198,12 @@ cd server && npm run build && npm start
 
 Schema is managed by Prisma. See [`server/prisma/schema.prisma`](./server/prisma/schema.prisma) for the source of truth. The data model:
 
-- **HabitGroup** — colour-coded category (e.g. Health, Focus).
-- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group.
-- **Entry** — one row per `(habit, date)`; uniqueness is enforced at the DB level.
+- **User** — an account with a unique email, bcrypt-hashed password, and `emailVerified` flag.
+- **Session** — a server-side session keyed by the SHA-256 hash of the cookie token; supports logout and revocation.
+- **VerificationToken** — single-use, expiring tokens for email verification and password reset (only their hashes are stored).
+- **HabitGroup** — colour-coded category (e.g. Health, Focus), owned by a user.
+- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group; owned by a user.
+- **Entry** — one row per `(habit, date)`; uniqueness is enforced at the DB level; owned by a user.
 
 Common Prisma tasks (run inside the `server` container or from `server/`):
 
@@ -191,6 +217,24 @@ npx prisma studio                        # browse data in the GUI
 ## API reference
 
 Base URL: `http://localhost:3001/api`
+
+All `/api` routes except `/health` and `/auth/*` require an authenticated, email-verified session (sent via the `habitmaxxing_session` httpOnly cookie). Data routes only ever return the signed-in user's own records.
+
+**Auth** (public):
+
+| Method | Path                          | Purpose                                      |
+| ------ | ----------------------------- | -------------------------------------------- |
+| POST   | `/auth/register`              | Create account, send verification email      |
+| POST   | `/auth/verify-email`          | Verify email with a token                     |
+| POST   | `/auth/resend-verification`   | Re-send the verification email                |
+| POST   | `/auth/login`                 | Sign in, set session cookie                    |
+| POST   | `/auth/logout`                | Destroy the current session                   |
+| GET    | `/auth/me`                    | Current user, or 401                          |
+| POST   | `/auth/forgot-password`       | Send a password-reset email                   |
+| POST   | `/auth/reset-password`        | Set a new password from a reset token         |
+| POST   | `/auth/change-password`       | Change password (authenticated)               |
+
+**Data** (authenticated):
 
 | Method | Path                       | Purpose                              |
 | ------ | -------------------------- | ------------------------------------ |
@@ -228,6 +272,9 @@ docker compose exec db psql -U habitmaxxing  # psql shell into the DB
 - **Migrations look out of sync** — `docker compose down -v` wipes the volume and reseeds on next boot. Destructive: only do this if you don't care about your entries.
 - **Client can't reach the API** — check `VITE_API_URL` matches the host-side `SERVER_PORT`.
 - **Wrong "today" date around midnight** — verify both `APP_TZ` and `VITE_APP_TZ` are set to your local timezone.
+- **Can't sign in / 401 on every request** — the API uses a cookie, so `CORS_ORIGIN` must list the exact origin you load the client from, and `VITE_API_URL` must point at the API. Mismatched origins block the cookie.
+- **Verification / reset email never arrives** — with no `SMTP_HOST` set, emails (and their links) are printed to the server log instead of sent: `docker compose logs -f server`.
+- **Upgrading a database that predates accounts** — the auth migration assigns any pre-existing (ownerless) habits/entries to a `legacy@habitmaxxing.local` account with an unusable password; use **Forgot password** to claim it, or just sign in with the freshly seeded `demo@habitmaxxing.local`.
 
 ## Roadmap
 

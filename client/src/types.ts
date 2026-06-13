@@ -1,5 +1,29 @@
 export type HabitType = 'boolean' | 'integer' | 'decimal' | 'score' | 'time' | 'duration' | 'text';
 
+export type UserRole = 'user' | 'admin';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  emailVerified: boolean;
+  isGuest: boolean;
+  role: UserRole;
+}
+
+// A user row as seen by an admin: account metadata + activity counts only.
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  emailVerified: boolean;
+  isGuest: boolean;
+  role: UserRole;
+  disabledAt: string | null;
+  createdAt: string;
+  _count: { habits: number; entries: number; groups: number };
+}
+
 export interface Habit {
   id: string;
   name: string;

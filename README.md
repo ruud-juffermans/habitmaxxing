@@ -1,4 +1,4 @@
-# Lifemaxxing
+# Habitmaxxing
 
 A self-hosted, local-first habit tracker. Define the habits that matter to you, log them daily, and watch trends emerge over weeks and months.
 
@@ -99,11 +99,11 @@ All configuration is environment-driven via `.env` (see [`.env.example`](./.env.
 
 | Variable            | Default                                                                | Purpose                              |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
-| `POSTGRES_USER`     | `lifemaxxing`                                                          | DB username                          |
-| `POSTGRES_PASSWORD` | `lifemaxxing`                                                          | DB password                          |
-| `POSTGRES_DB`       | `lifemaxxing`                                                          | DB name                              |
+| `POSTGRES_USER`     | `habitmaxxing`                                                          | DB username                          |
+| `POSTGRES_PASSWORD` | `habitmaxxing`                                                          | DB password                          |
+| `POSTGRES_DB`       | `habitmaxxing`                                                          | DB name                              |
 | `POSTGRES_PORT`     | `5432`                                                                 | Host-side DB port                    |
-| `DATABASE_URL`      | `postgresql://lifemaxxing:lifemaxxing@db:5432/lifemaxxing?schema=public` | Server's connection string          |
+| `DATABASE_URL`      | `postgresql://habitmaxxing:habitmaxxing@db:5432/habitmaxxing?schema=public` | Server's connection string          |
 | `SERVER_PORT`       | `3001`                                                                 | Express API port                     |
 | `CLIENT_PORT`       | `5173`                                                                 | Vite dev server port                 |
 | `VITE_API_URL`      | `http://localhost:3001`                                                | API base URL the client targets      |
@@ -219,7 +219,7 @@ docker compose down -v             # stop AND wipe the database
 docker compose logs -f             # tail all logs
 docker compose logs -f server      # tail server only
 docker compose restart server      # restart after server-side dep changes
-docker compose exec db psql -U lifemaxxing  # psql shell into the DB
+docker compose exec db psql -U habitmaxxing  # psql shell into the DB
 ```
 
 ## Troubleshooting

@@ -10,7 +10,7 @@ import { Stats } from './pages/Stats';
 import { Periods } from './pages/Periods';
 import { Settings } from './pages/Settings';
 
-const STORAGE_KEY = 'lifemaxxing.theme';
+const STORAGE_KEY = 'habitmaxxing.theme';
 
 function readInitialTheme(): ThemeMode {
   const v = localStorage.getItem(STORAGE_KEY);
@@ -29,7 +29,7 @@ export function App() {
       <GlobalStyle />
       <Shell>
         <Nav>
-          <Brand>lifemaxxing</Brand>
+          <Brand>habitmaxxing</Brand>
           <NavLinks>
             <StyledNavLink to="/today">Today</StyledNavLink>
             <StyledNavLink to="/history">History</StyledNavLink>

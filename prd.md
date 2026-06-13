@@ -1,8 +1,8 @@
-# Product Requirements Document: Lifemaxxing
+# Product Requirements Document: Habitmaxxing
 
 ## 1. Overview
 
-**Lifemaxxing** is a fullstack web application for tracking daily habits and personal metrics. It runs locally as a single-user app (no authentication) for the owner to log daily entries against a configurable list of habits and metrics, building a long-term record of their routines, sleep quality, and self-improvement activities.
+**Habitmaxxing** is a fullstack web application for tracking daily habits and personal metrics. It runs locally as a single-user app (no authentication) for the owner to log daily entries against a configurable list of habits and metrics, building a long-term record of their routines, sleep quality, and self-improvement activities.
 
 ## 2. Goals
 
@@ -176,7 +176,7 @@ The application is started and stopped exclusively via Docker Compose.
 
 | Service  | Image / Build           | Port (host → container) | Notes                                    |
 |----------|-------------------------|-------------------------|------------------------------------------|
-| `db`     | `postgres:16-alpine`    | `127.0.0.1:5432 → 5432` | Named volume `lifemaxxing_pgdata`        |
+| `db`     | `postgres:16-alpine`    | `127.0.0.1:5432 → 5432` | Named volume `habitmaxxing_pgdata`        |
 | `server` | build `./server`        | `127.0.0.1:3001 → 3001` | Waits for `db` healthcheck; runs migrations on start |
 | `client` | build `./client`        | `127.0.0.1:5173 → 5173` | Vite dev server in dev, nginx static in prod profile |
 

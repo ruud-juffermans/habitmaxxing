@@ -1,19 +1,80 @@
-import type { DayPayload, Entry, Habit, HabitGroup, HabitStats, HabitType } from './types';
+import type { AdminUser, AuthUser, DayPayload, Entry, Habit, HabitGroup, HabitStats, HabitType } from './types';
 
 const base = import.meta.env.VITE_API_URL ?? '';
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${base}${path}`, {
     ...init,
+    // Send/receive the session cookie on every request.
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
+    // Prefer a JSON { error, code } body; fall back to plain text.
+    let message = res.statusText;
+    let code: string | undefined;
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        message = parsed.error ?? text;
+        code = parsed.code;
+      } catch {
+        message = text;
+      }
+    }
+    throw new ApiError(res.status, message, code);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
+
+export const auth = {
+  register(data: { email: string; password: string; name?: string }): Promise<{ ok: true }> {
+    return request(`/api/auth/register`, { method: 'POST', body: JSON.stringify(data) });
+  },
+  verifyEmail(token: string): Promise<{ ok: true }> {
+    return request(`/api/auth/verify-email`, { method: 'POST', body: JSON.stringify({ token }) });
+  },
+  resendVerification(email: string): Promise<{ ok: true }> {
+    return request(`/api/auth/resend-verification`, { method: 'POST', body: JSON.stringify({ email }) });
+  },
+  login(data: { email: string; password: string }): Promise<{ user: AuthUser }> {
+    return request(`/api/auth/login`, { method: 'POST', body: JSON.stringify(data) });
+  },
+  guest(): Promise<{ user: AuthUser }> {
+    return request(`/api/auth/guest`, { method: 'POST' });
+  },
+  convert(data: { email: string; password: string; name?: string }): Promise<{ user: AuthUser }> {
+    return request(`/api/auth/convert`, { method: 'POST', body: JSON.stringify(data) });
+  },
+  logout(): Promise<{ ok: true }> {
+    return request(`/api/auth/logout`, { method: 'POST' });
+  },
+  me(): Promise<{ user: AuthUser }> {
+    return request(`/api/auth/me`);
+  },
+  forgotPassword(email: string): Promise<{ ok: true }> {
+    return request(`/api/auth/forgot-password`, { method: 'POST', body: JSON.stringify({ email }) });
+  },
+  resetPassword(data: { token: string; password: string }): Promise<{ ok: true }> {
+    return request(`/api/auth/reset-password`, { method: 'POST', body: JSON.stringify(data) });
+  },
+  changePassword(data: { currentPassword: string; newPassword: string }): Promise<{ ok: true }> {
+    return request(`/api/auth/change-password`, { method: 'POST', body: JSON.stringify(data) });
+  },
+};
 
 export const api = {
   listHabits(includeArchived = false): Promise<Habit[]> {
@@ -67,6 +128,33 @@ export const api = {
   },
   deleteGroup(id: string): Promise<void> {
     return request(`/api/groups/${id}`, { method: 'DELETE' });
+  },
+};
+
+// Admin-only user management. All endpoints require the signed-in user to be an
+// admin; the server returns 403 otherwise.
+export const admin = {
+  listUsers(search?: string): Promise<{ users: AdminUser[] }> {
+    const q = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request(`/api/admin/users${q}`);
+  },
+  suspend(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}/suspend`, { method: 'POST' });
+  },
+  unsuspend(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}/unsuspend`, { method: 'POST' });
+  },
+  deleteUser(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}`, { method: 'DELETE' });
+  },
+  resetPassword(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}/reset-password`, { method: 'POST' });
+  },
+  verifyEmail(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}/verify-email`, { method: 'POST' });
+  },
+  revokeSessions(id: string): Promise<{ ok: true }> {
+    return request(`/api/admin/users/${id}/revoke-sessions`, { method: 'POST' });
   },
 };
 

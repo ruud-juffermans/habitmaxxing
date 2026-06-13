@@ -24,7 +24,7 @@ habitsRouter.get(
   asyncRoute(async (req, res) => {
     const includeArchived = req.query.includeArchived === 'true';
     const habits = await prisma.habit.findMany({
-      where: includeArchived ? {} : { archived: false },
+      where: { userId: req.user!.id, ...(includeArchived ? {} : { archived: false }) },
       orderBy: [
         { group: { sortOrder: 'asc' } },
         { sortOrder: 'asc' },
@@ -39,7 +39,15 @@ habitsRouter.post(
   '/',
   asyncRoute(async (req, res) => {
     const body = habitBody.parse(req.body);
-    const habit = await prisma.habit.create({ data: body });
+    // Guard against attaching to another user's group.
+    if (body.groupId) {
+      const group = await prisma.habitGroup.findFirst({
+        where: { id: body.groupId, userId: req.user!.id },
+        select: { id: true },
+      });
+      if (!group) return res.status(400).json({ error: 'Unknown group' });
+    }
+    const habit = await prisma.habit.create({ data: { ...body, userId: req.user!.id } });
     res.status(201).json(habit);
   }),
 );
@@ -48,10 +56,19 @@ habitsRouter.patch(
   '/:id',
   asyncRoute(async (req, res) => {
     const body = habitBody.partial().parse(req.body);
-    const habit = await prisma.habit.update({
-      where: { id: req.params.id },
+    if (body.groupId) {
+      const group = await prisma.habitGroup.findFirst({
+        where: { id: body.groupId, userId: req.user!.id },
+        select: { id: true },
+      });
+      if (!group) return res.status(400).json({ error: 'Unknown group' });
+    }
+    const { count } = await prisma.habit.updateMany({
+      where: { id: req.params.id, userId: req.user!.id },
       data: body,
     });
+    if (count === 0) return res.status(404).json({ error: 'Not found' });
+    const habit = await prisma.habit.findUnique({ where: { id: req.params.id } });
     res.json(habit);
   }),
 );
@@ -59,7 +76,10 @@ habitsRouter.patch(
 habitsRouter.delete(
   '/:id',
   asyncRoute(async (req, res) => {
-    await prisma.habit.delete({ where: { id: req.params.id } });
+    const { count } = await prisma.habit.deleteMany({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (count === 0) return res.status(404).json({ error: 'Not found' });
     res.status(204).end();
   }),
 );

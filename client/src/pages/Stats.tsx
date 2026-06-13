@@ -130,7 +130,7 @@ const SectionTitle = styled.h2<{ $color: string | null }>`
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
   gap: ${({ theme }) => theme.space.md};
 `;
 

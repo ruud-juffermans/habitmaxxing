@@ -198,6 +198,7 @@ export function Settings() {
         {loading ? (
           <Muted>Loading…</Muted>
         ) : (
+          <TableWrap>
           <Table>
             <colgroup>
               <col style={{ width: '16%' }} />
@@ -306,6 +307,7 @@ export function Settings() {
               ))}
             </tbody>
           </Table>
+          </TableWrap>
         )}
       </Section>
     </>
@@ -318,6 +320,10 @@ const Section = styled.section`
   border-radius: ${({ theme }) => theme.radii.lg};
   padding: ${({ theme }) => theme.space.lg};
   margin-bottom: ${({ theme }) => theme.space.lg};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    padding: ${({ theme }) => theme.space.md};
+  }
 `;
 
 const SectionTitle = styled.h2`
@@ -329,6 +335,14 @@ const AddRow = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 80px 80px auto;
   gap: ${({ theme }) => theme.space.sm};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const DescriptionRow = styled.div`
@@ -373,10 +387,19 @@ const ColorInput = styled.input`
   cursor: pointer;
 `;
 
+const TableWrap = styled.div`
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
+    min-width: 720px;
+  }
 `;
 
 const Th = styled.th`

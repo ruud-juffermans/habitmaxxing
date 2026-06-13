@@ -284,7 +284,7 @@ function formatMonthLabel(range: PeriodRange): string {
 
 const Periods2Col = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: ${({ theme }) => theme.space.xl};
   align-items: start;
 `;
@@ -341,7 +341,7 @@ const SectionTitle = styled.h3<{ $color: string | null }>`
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: ${({ theme }) => theme.space.md};
 `;
 

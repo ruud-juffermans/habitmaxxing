@@ -19,24 +19,43 @@ function readInitialTheme(): ThemeMode {
 
 export function App() {
   const [mode, setMode] = useState<ThemeMode>(readInitialTheme);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, mode);
   }, [mode]);
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <ThemeProvider theme={themes[mode]}>
       <GlobalStyle />
       <Shell>
         <Nav>
+          <Hamburger
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            <span />
+            <span />
+            <span />
+          </Hamburger>
           <Brand>habitmaxxing</Brand>
-          <NavLinks>
-            <StyledNavLink to="/today">Today</StyledNavLink>
-            <StyledNavLink to="/history">History</StyledNavLink>
-            <StyledNavLink to="/stats">Stats</StyledNavLink>
-            <StyledNavLink to="/periods">Periods</StyledNavLink>
-            <StyledNavLink to="/settings">Settings</StyledNavLink>
+          <NavLinks $open={menuOpen}>
+            <DrawerHeader>
+              <Brand>habitmaxxing</Brand>
+              <CloseButton onClick={closeMenu} aria-label="Close menu">
+                &times;
+              </CloseButton>
+            </DrawerHeader>
+            <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
+            <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
+            <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
+            <StyledNavLink to="/periods" onClick={closeMenu}>Periods</StyledNavLink>
+            <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
           </NavLinks>
+          <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
           <ThemeToggle
             onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"
@@ -72,6 +91,11 @@ const Nav = styled.nav`
   padding: ${({ theme }) => theme.space.md} ${({ theme }) => theme.space.xl};
   background: ${({ theme }) => theme.colors.surface};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    gap: ${({ theme }) => theme.space.sm};
+    padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
+  }
 `;
 
 const Brand = styled.div`
@@ -79,10 +103,92 @@ const Brand = styled.div`
   font-size: ${({ theme }) => theme.fontSizes.lg};
 `;
 
-const NavLinks = styled.div`
+const Hamburger = styled.button`
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: ${({ theme }) => theme.colors.text};
+    border-radius: 2px;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: flex;
+  }
+`;
+
+const Overlay = styled.div<{ $open: boolean }>`
+  display: none;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: ${({ $open }) => ($open ? 1 : 0)};
+    pointer-events: ${({ $open }) => ($open ? 'auto' : 'none')};
+    transition: opacity 0.25s ease;
+  }
+`;
+
+const NavLinks = styled.div<{ $open: boolean }>`
   display: flex;
   gap: ${({ theme }) => theme.space.md};
   flex: 1;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 30;
+    flex: none;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.space.xs};
+    width: 78%;
+    max-width: 300px;
+    padding: ${({ theme }) => theme.space.md};
+    background: ${({ theme }) => theme.colors.surface};
+    border-right: 1px solid ${({ theme }) => theme.colors.border};
+    transform: translateX(${({ $open }) => ($open ? '0' : '-100%')});
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+  }
+`;
+
+const DrawerHeader = styled.div`
+  display: none;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: ${({ theme }) => theme.space.sm};
+    padding-bottom: ${({ theme }) => theme.space.sm};
+    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  }
+`;
+
+const CloseButton = styled.button`
+  background: transparent;
+  border: none;
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
 `;
 
 const StyledNavLink = styled(NavLink)`
@@ -90,6 +196,8 @@ const StyledNavLink = styled(NavLink)`
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.colors.textMuted};
   text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &.active {
     color: ${({ theme }) => theme.colors.text};
@@ -108,6 +216,10 @@ const ThemeToggle = styled.button`
   cursor: pointer;
 
   &:hover { background: ${({ theme }) => theme.colors.border}; }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    margin-left: auto;
+  }
 `;
 
 const Main = styled.main`
@@ -116,4 +228,8 @@ const Main = styled.main`
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    padding: ${({ theme }) => theme.space.md};
+  }
 `;

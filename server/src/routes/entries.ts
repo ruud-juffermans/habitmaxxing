@@ -30,14 +30,14 @@ entriesRouter.get(
     const date = dateStr.parse(req.query.date);
     const [habits, entries] = await Promise.all([
       prisma.habit.findMany({
-        where: { archived: false },
+        where: { userId: req.user!.id, archived: false },
         orderBy: [
           { group: { sortOrder: 'asc' } },
           { sortOrder: 'asc' },
           { createdAt: 'asc' },
         ],
       }),
-      prisma.entry.findMany({ where: { entryDate: toDate(date) } }),
+      prisma.entry.findMany({ where: { userId: req.user!.id, entryDate: toDate(date) } }),
     ]);
     res.json({
       date,
@@ -53,7 +53,7 @@ entriesRouter.get(
     const from = dateStr.parse(req.query.from);
     const to = dateStr.parse(req.query.to);
     const entries = await prisma.entry.findMany({
-      where: { entryDate: { gte: toDate(from), lte: toDate(to) } },
+      where: { userId: req.user!.id, entryDate: { gte: toDate(from), lte: toDate(to) } },
       orderBy: { entryDate: 'asc' },
     });
     res.json(entries.map((e) => ({ ...e, entryDate: toDateOnly(e.entryDate) })));
@@ -64,6 +64,13 @@ entriesRouter.put(
   '/',
   asyncRoute(async (req, res) => {
     const body = entryBody.parse(req.body);
+    // Only allow writing entries for a habit the user owns.
+    const habit = await prisma.habit.findFirst({
+      where: { id: body.habitId, userId: req.user!.id },
+      select: { id: true },
+    });
+    if (!habit) return res.status(404).json({ error: 'Habit not found' });
+
     const data = {
       valueBool: body.valueBool ?? null,
       valueNum: body.valueNum ?? null,
@@ -74,7 +81,7 @@ entriesRouter.put(
       where: {
         habitId_entryDate: { habitId: body.habitId, entryDate: toDate(body.entryDate) },
       },
-      create: { habitId: body.habitId, entryDate: toDate(body.entryDate), ...data },
+      create: { habitId: body.habitId, userId: req.user!.id, entryDate: toDate(body.entryDate), ...data },
       update: data,
     });
     res.json({ ...entry, entryDate: toDateOnly(entry.entryDate) });

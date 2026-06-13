@@ -3,6 +3,7 @@ import styled, { css } from 'styled-components';
 import { api } from '../api';
 import type { Habit, HabitGroup, HabitType } from '../types';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
+import { AccountSection } from './AccountSection';
 
 const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
 const DEFAULT_COLOR = '#3357ff';
@@ -121,6 +122,8 @@ export function Settings() {
         <H1>Settings</H1>
         <Muted>Customize what you track</Muted>
       </PageHeader>
+
+      <AccountSection />
 
       <Section>
         <SectionTitle>Groups</SectionTitle>

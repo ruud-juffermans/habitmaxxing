@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation, Link } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import styled from 'styled-components';
 import { GlobalStyle } from './global';
 import { themes, type ThemeMode } from './theme';
+import { useAuth } from './auth';
 import { Today } from './pages/Today';
 import { History } from './pages/History';
 import { Stats } from './pages/Stats';
@@ -11,6 +12,12 @@ import { Week } from './pages/Week';
 import { Month } from './pages/Month';
 import { AllTime } from './pages/AllTime';
 import { Settings } from './pages/Settings';
+import { AdminUsers } from './pages/admin/Users';
+import { Login } from './pages/auth/Login';
+import { Register } from './pages/auth/Register';
+import { ForgotPassword } from './pages/auth/ForgotPassword';
+import { ResetPassword } from './pages/auth/ResetPassword';
+import { VerifyEmail } from './pages/auth/VerifyEmail';
 
 const STORAGE_KEY = 'habitmaxxing.theme';
 
@@ -21,69 +28,136 @@ function readInitialTheme(): ThemeMode {
 
 export function App() {
   const [mode, setMode] = useState<ThemeMode>(readInitialTheme);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, mode);
   }, [mode]);
 
-  const closeMenu = () => setMenuOpen(false);
-
   return (
     <ThemeProvider theme={themes[mode]}>
       <GlobalStyle />
-      <Shell>
-        <Nav>
-          <Hamburger
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-          >
-            <span />
-            <span />
-            <span />
-          </Hamburger>
-          <Brand>habitmaxxing</Brand>
-          <NavLinks $open={menuOpen}>
-            <DrawerHeader>
-              <Brand>habitmaxxing</Brand>
-              <CloseButton onClick={closeMenu} aria-label="Close menu">
-                &times;
-              </CloseButton>
-            </DrawerHeader>
-            <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
-            <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
-            <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
-            <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
-            <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
-            <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
-            <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
-          </NavLinks>
-          <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
+      {loading ? (
+        <Loading>Loading…</Loading>
+      ) : user ? (
+        <AuthedApp mode={mode} setMode={setMode} />
+      ) : (
+        <PublicRoutes />
+      )}
+    </ThemeProvider>
+  );
+}
+
+// Routes available when signed out. The email-link destinations (verify-email,
+// reset-password) live here so they work before the user has a session.
+function PublicRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="*" element={<RedirectToLogin />} />
+    </Routes>
+  );
+}
+
+// Preserve where the user was headed so we can bounce them back after login.
+function RedirectToLogin() {
+  const location = useLocation();
+  const from = location.pathname + location.search;
+  const suffix = from && from !== '/' ? `?next=${encodeURIComponent(from)}` : '';
+  return <Navigate to={`/login${suffix}`} replace />;
+}
+
+function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
+  const { user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <Shell>
+      <Nav>
+        <Hamburger
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+        >
+          <span />
+          <span />
+          <span />
+        </Hamburger>
+        <Brand>habitmaxxing</Brand>
+        <NavLinks $open={menuOpen}>
+          <DrawerHeader>
+            <Brand>habitmaxxing</Brand>
+            <CloseButton onClick={closeMenu} aria-label="Close menu">
+              &times;
+            </CloseButton>
+          </DrawerHeader>
+          <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
+          <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
+          <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
+          <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
+          <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
+          <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
+          <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
+          {user?.role === 'admin' && (
+            <StyledNavLink to="/admin" onClick={closeMenu}>Admin</StyledNavLink>
+          )}
+        </NavLinks>
+        <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
+        <UserArea>
+          <UserEmail title={user?.email}>{user?.name || user?.email}</UserEmail>
           <ThemeToggle
             onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"
           >
             {mode === 'light' ? 'Dark' : 'Light'}
           </ThemeToggle>
-        </Nav>
-        <Main>
-          <Routes>
-            <Route path="/" element={<Navigate to="/today" replace />} />
-            <Route path="/today" element={<Today />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/week" element={<Week />} />
-            <Route path="/month" element={<Month />} />
-            <Route path="/all-time" element={<AllTime />} />
-            <Route path="/periods" element={<Navigate to="/week" replace />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Main>
-      </Shell>
-    </ThemeProvider>
+          <SignOut onClick={() => logout()}>Sign out</SignOut>
+        </UserArea>
+      </Nav>
+      {user?.isGuest && (
+        <GuestBanner>
+          <span>You're exploring as a guest, </span>
+          <Link to="/settings">Create an account →</Link>
+        </GuestBanner>
+      )}
+      <Main>
+        <Routes>
+          <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route path="/today" element={<Today />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/stats" element={<Stats />} />
+          <Route path="/week" element={<Week />} />
+          <Route path="/month" element={<Month />} />
+          <Route path="/all-time" element={<AllTime />} />
+          <Route path="/periods" element={<Navigate to="/week" replace />} />
+          <Route path="/settings" element={<Settings />} />
+          {/* Admin-only; non-admins are bounced to their dashboard. */}
+          <Route
+            path="/admin"
+            element={user?.role === 'admin' ? <AdminUsers /> : <Navigate to="/today" replace />}
+          />
+          {/* Already authenticated: keep these from showing the public pages. */}
+          <Route path="/login" element={<Navigate to="/today" replace />} />
+          <Route path="/register" element={<Navigate to="/today" replace />} />
+          <Route path="*" element={<Navigate to="/today" replace />} />
+        </Routes>
+      </Main>
+    </Shell>
   );
 }
+
+const Loading = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.textMuted};
+`;
 
 const Shell = styled.div`
   min-height: 100%;
@@ -214,6 +288,29 @@ const StyledNavLink = styled(NavLink)`
   &:hover { text-decoration: none; color: ${({ theme }) => theme.colors.text}; }
 `;
 
+const UserArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.space.sm};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    margin-left: auto;
+  }
+`;
+
+const UserEmail = styled.span`
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: none;
+  }
+`;
+
 const ThemeToggle = styled.button`
   padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
   background: ${({ theme }) => theme.colors.surfaceAlt};
@@ -223,9 +320,34 @@ const ThemeToggle = styled.button`
   cursor: pointer;
 
   &:hover { background: ${({ theme }) => theme.colors.border}; }
+`;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
-    margin-left: auto;
+const SignOut = styled.button`
+  padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
+  background: transparent;
+  color: ${({ theme }) => theme.colors.textMuted};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.md};
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover { color: ${({ theme }) => theme.colors.text}; background: ${({ theme }) => theme.colors.surfaceAlt}; }
+`;
+
+const GuestBanner = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
+  padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
+  background: ${({ theme }) => theme.colors.primary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  color: ${({ theme }) => theme.colors.primaryText};
+
+  a {
+    color: ${({ theme }) => theme.colors.primaryText};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
   }
 `;
 

@@ -57,7 +57,7 @@ const darkColors = {
   text: '#f2f4f7',
   textMuted: '#9aa1ad',
   primary: '#6b8bff',
-  primaryText: '#0f1115',
+  primaryText: '#ffffff',
   success: '#4ed08c',
   danger: '#ef6a6a',
   warning: '#e7b046',

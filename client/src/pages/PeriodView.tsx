@@ -9,36 +9,40 @@ type Aggregate =
   | { kind: 'numeric'; entries: number; avg: number | null; sum: number }
   | { kind: 'count'; entries: number };
 
-interface PeriodRange {
+export interface PeriodRange {
   from: string;
   to: string;
-  days: number;
+  /** Fixed number of days in the range, or null to derive per-habit (all time). */
+  days: number | null;
 }
 
-export function Periods() {
+export function PeriodView({
+  title,
+  subtitle,
+  range,
+}: {
+  title: string;
+  subtitle: string;
+  range: PeriodRange;
+}) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [groups, setGroups] = useState<HabitGroup[]>([]);
-  const [weekEntries, setWeekEntries] = useState<Entry[]>([]);
-  const [monthEntries, setMonthEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  const week = useMemo(() => currentWeekRange(new Date()), []);
-  const month = useMemo(() => currentMonthRange(new Date()), []);
-
   useEffect(() => {
+    setLoaded(false);
     Promise.all([
       api.listHabits(),
       api.listGroups(),
-      api.getRange(week.from, week.to),
-      api.getRange(month.from, month.to),
-    ]).then(([h, g, w, m]) => {
+      api.getRange(range.from, range.to),
+    ]).then(([h, g, e]) => {
       setHabits(h);
       setGroups(g);
-      setWeekEntries(w);
-      setMonthEntries(m);
+      setEntries(e);
       setLoaded(true);
     });
-  }, [week.from, week.to, month.from, month.to]);
+  }, [range.from, range.to]);
 
   const sortedHabits = useMemo(
     () => [...habits].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -55,26 +59,34 @@ export function Periods() {
   return (
     <>
       <PageHeader>
-        <H1>Periods</H1>
-        <Muted>Current week & month</Muted>
+        <H1>{title}</H1>
+        <Muted>{subtitle}</Muted>
       </PageHeader>
 
-      <Periods2Col>
-        <PeriodColumn
-          title="This week"
-          subtitle={formatWeekLabel(week)}
-          entries={weekEntries}
-          range={week}
-          sections={sections}
-        />
-        <PeriodColumn
-          title="This month"
-          subtitle={formatMonthLabel(month)}
-          entries={monthEntries}
-          range={month}
-          sections={sections}
-        />
-      </Periods2Col>
+      <Sections>
+        {sections.map(({ group, habits }) => (
+          <Section key={group?.id ?? 'ungrouped'}>
+            <SectionHeader>
+              <SectionTitle $color={group?.color ?? null}>
+                {group ? group.name : 'Ungrouped'}
+              </SectionTitle>
+              <Muted>
+                {habits.length} habit{habits.length === 1 ? '' : 's'}
+              </Muted>
+            </SectionHeader>
+            <Grid>
+              {habits.map((h) => (
+                <HabitTile
+                  key={h.id}
+                  habit={h}
+                  agg={aggregate(h, entries, range)}
+                  accent={group?.color ?? null}
+                />
+              ))}
+            </Grid>
+          </Section>
+        ))}
+      </Sections>
     </>
   );
 }
@@ -100,53 +112,6 @@ function buildSections(habits: Habit[], groups: HabitGroup[]): SectionData[] {
     ordered.push({ group: null, habits: byGroup.get(null)! });
   }
   return ordered;
-}
-
-function PeriodColumn({
-  title,
-  subtitle,
-  entries,
-  range,
-  sections,
-}: {
-  title: string;
-  subtitle: string;
-  entries: Entry[];
-  range: PeriodRange;
-  sections: SectionData[];
-}) {
-  return (
-    <Column>
-      <ColumnHeader>
-        <ColumnTitle>{title}</ColumnTitle>
-        <Muted>{subtitle}</Muted>
-      </ColumnHeader>
-      <Sections>
-        {sections.map(({ group, habits }) => (
-          <Section key={group?.id ?? 'ungrouped'}>
-            <SectionHeader>
-              <SectionTitle $color={group?.color ?? null}>
-                {group ? group.name : 'Ungrouped'}
-              </SectionTitle>
-              <Muted>
-                {habits.length} habit{habits.length === 1 ? '' : 's'}
-              </Muted>
-            </SectionHeader>
-            <Grid>
-              {habits.map((h) => (
-                <HabitTile
-                  key={h.id}
-                  habit={h}
-                  agg={aggregate(h, entries, range.days)}
-                  accent={group?.color ?? null}
-                />
-              ))}
-            </Grid>
-          </Section>
-        ))}
-      </Sections>
-    </Column>
-  );
 }
 
 function HabitTile({
@@ -208,11 +173,11 @@ function renderAggregate(agg: Aggregate, habit: Habit) {
   );
 }
 
-function aggregate(habit: Habit, all: Entry[], daysInRange: number): Aggregate {
+function aggregate(habit: Habit, all: Entry[], range: PeriodRange): Aggregate {
   const items = all.filter((e) => e.habitId === habit.id);
   if (habit.type === 'boolean') {
     const completed = items.filter((e) => e.valueBool === true).length;
-    return { kind: 'boolean', completed, total: daysInRange };
+    return { kind: 'boolean', completed, total: booleanTotal(habit, range) };
   }
   if (isNumericType(habit.type)) {
     const nums = items
@@ -232,6 +197,24 @@ function aggregate(habit: Habit, all: Entry[], daysInRange: number): Aggregate {
   return { kind: 'count', entries: count };
 }
 
+/**
+ * Days a boolean habit could have been completed in this range. For fixed
+ * ranges (week/month) that's range.days; for all time we count from the day
+ * the habit was created (clamped to the range start) up to the range end.
+ */
+function booleanTotal(habit: Habit, range: PeriodRange): number {
+  if (range.days != null) return range.days;
+  const created = isoDate(new Date(habit.createdAt));
+  const start = created > range.from ? created : range.from;
+  return Math.max(1, daysBetweenInclusive(start, range.to));
+}
+
+function daysBetweenInclusive(from: string, to: string): number {
+  const a = new Date(`${from}T00:00:00`).getTime();
+  const b = new Date(`${to}T00:00:00`).getTime();
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
 function isNumericType(t: HabitType): boolean {
   return t === 'integer' || t === 'decimal' || t === 'score' || t === 'duration';
 }
@@ -248,68 +231,6 @@ function isoDate(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
-
-function currentWeekRange(today: Date): PeriodRange {
-  const d = new Date(today);
-  d.setHours(0, 0, 0, 0);
-  const dow = d.getDay();
-  const diffToMon = (dow + 6) % 7;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - diffToMon);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { from: isoDate(monday), to: isoDate(sunday), days: 7 };
-}
-
-function currentMonthRange(today: Date): PeriodRange {
-  const y = today.getFullYear();
-  const m = today.getMonth();
-  const first = new Date(y, m, 1);
-  const last = new Date(y, m + 1, 0);
-  return { from: isoDate(first), to: isoDate(last), days: last.getDate() };
-}
-
-function formatWeekLabel(range: PeriodRange): string {
-  const from = new Date(`${range.from}T00:00:00`);
-  const to = new Date(`${range.to}T00:00:00`);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  return `${fmt(from)} – ${fmt(to)}`;
-}
-
-function formatMonthLabel(range: PeriodRange): string {
-  const d = new Date(`${range.from}T00:00:00`);
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-}
-
-const Periods2Col = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: ${({ theme }) => theme.space.xl};
-  align-items: start;
-`;
-
-const Column = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.space.md};
-  min-width: 0;
-`;
-
-const ColumnHeader = styled.div`
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: ${({ theme }) => theme.space.md};
-  padding-bottom: ${({ theme }) => theme.space.sm};
-  border-bottom: 2px solid ${({ theme }) => theme.colors.border};
-`;
-
-const ColumnTitle = styled.h2`
-  font-size: ${({ theme }) => theme.fontSizes.xl};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  margin: 0;
-`;
 
 const Sections = styled.div`
   display: flex;

@@ -7,7 +7,9 @@ import { themes, type ThemeMode } from './theme';
 import { Today } from './pages/Today';
 import { History } from './pages/History';
 import { Stats } from './pages/Stats';
-import { Periods } from './pages/Periods';
+import { Week } from './pages/Week';
+import { Month } from './pages/Month';
+import { AllTime } from './pages/AllTime';
 import { Settings } from './pages/Settings';
 
 const STORAGE_KEY = 'habitmaxxing.theme';
@@ -52,7 +54,9 @@ export function App() {
             <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
             <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
             <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
-            <StyledNavLink to="/periods" onClick={closeMenu}>Periods</StyledNavLink>
+            <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
+            <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
+            <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
             <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
           </NavLinks>
           <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
@@ -69,7 +73,10 @@ export function App() {
             <Route path="/today" element={<Today />} />
             <Route path="/history" element={<History />} />
             <Route path="/stats" element={<Stats />} />
-            <Route path="/periods" element={<Periods />} />
+            <Route path="/week" element={<Week />} />
+            <Route path="/month" element={<Month />} />
+            <Route path="/all-time" element={<AllTime />} />
+            <Route path="/periods" element={<Navigate to="/week" replace />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Main>

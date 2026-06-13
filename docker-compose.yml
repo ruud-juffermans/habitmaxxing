@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-lifemaxxing}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifemaxxing}
-      POSTGRES_DB: ${POSTGRES_DB:-lifemaxxing}
+      POSTGRES_USER: ${POSTGRES_USER:-habitmaxxing}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-habitmaxxing}
+      POSTGRES_DB: ${POSTGRES_DB:-habitmaxxing}
     volumes:
-      - lifemaxxing_pgdata:/var/lib/postgresql/data
+      - habitmaxxing_pgdata:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lifemaxxing} -d ${POSTGRES_DB:-lifemaxxing}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-habitmaxxing} -d ${POSTGRES_DB:-habitmaxxing}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      DATABASE_URL: ${DATABASE_URL:-postgresql://lifemaxxing:lifemaxxing@db:5432/lifemaxxing?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://habitmaxxing:habitmaxxing@db:5432/habitmaxxing?schema=public}
       SERVER_PORT: ${SERVER_PORT:-3001}
       APP_TZ: ${APP_TZ:-Europe/Amsterdam}
     ports:
@@ -49,4 +49,4 @@ services:
       - server
 
 volumes:
-  lifemaxxing_pgdata:
+  habitmaxxing_pgdata:

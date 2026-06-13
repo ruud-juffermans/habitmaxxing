@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lifemaxxing}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifemaxxing}
+      POSTGRES_DB: ${POSTGRES_DB:-lifemaxxing}
+    volumes:
+      - lifemaxxing_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lifemaxxing} -d ${POSTGRES_DB:-lifemaxxing}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL:-postgresql://lifemaxxing:lifemaxxing@db:5432/lifemaxxing?schema=public}
+      SERVER_PORT: ${SERVER_PORT:-3001}
+      APP_TZ: ${APP_TZ:-Europe/Amsterdam}
+    ports:
+      - "127.0.0.1:${SERVER_PORT:-3001}:3001"
+    volumes:
+      - ./server/src:/app/src
+      - ./server/prisma:/app/prisma
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run dev"
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+      VITE_APP_TZ: ${VITE_APP_TZ:-Europe/Amsterdam}
+    ports:
+      - "127.0.0.1:${CLIENT_PORT:-5173}:5173"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/index.html:/app/index.html
+    depends_on:
+      - server
+
+volumes:
+  lifemaxxing_pgdata:

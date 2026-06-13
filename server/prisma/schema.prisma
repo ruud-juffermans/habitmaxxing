@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HabitType {
+  boolean
+  integer
+  decimal
+  score
+  time
+  duration
+  text
+}
+
+model HabitGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  color     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  habits    Habit[]
+
+  @@map("habit_groups")
+}
+
+model Habit {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  type        HabitType
+  unit        String?
+  min       Decimal?  @db.Decimal(12, 4)
+  max       Decimal?  @db.Decimal(12, 4)
+  sortOrder Int       @default(0) @map("sort_order")
+  archived  Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+  groupId   String?   @map("group_id") @db.Uuid
+  group     HabitGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  entries   Entry[]
+
+  @@index([groupId])
+  @@map("habits")
+}
+
+model Entry {
+  id         String   @id @default(uuid()) @db.Uuid
+  habitId    String   @map("habit_id") @db.Uuid
+  entryDate  DateTime @map("entry_date") @db.Date
+  valueBool  Boolean? @map("value_bool")
+  valueNum   Decimal? @map("value_num") @db.Decimal(12, 4)
+  valueText  String?  @map("value_text")
+  valueTime  String?  @map("value_time")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, entryDate])
+  @@index([entryDate])
+  @@map("entries")
+}

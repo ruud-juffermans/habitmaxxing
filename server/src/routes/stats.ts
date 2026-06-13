@@ -30,12 +30,12 @@ function dateOnly(d: Date): string {
 
 statsRouter.get(
   '/',
-  asyncRoute(async (_req, res) => {
-    const habits = await prisma.habit.findMany({ where: { archived: false } });
+  asyncRoute(async (req, res) => {
+    const habits = await prisma.habit.findMany({ where: { userId: req.user!.id, archived: false } });
     const today = todayStr();
     const since = shiftDays(today, -30);
     const entries = await prisma.entry.findMany({
-      where: { entryDate: { gte: new Date(`${since}T00:00:00.000Z`) } },
+      where: { userId: req.user!.id, entryDate: { gte: new Date(`${since}T00:00:00.000Z`) } },
       orderBy: { entryDate: 'desc' },
     });
 

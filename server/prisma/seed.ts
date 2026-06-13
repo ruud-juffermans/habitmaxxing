@@ -1,6 +1,12 @@
 import { PrismaClient, HabitType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+// A ready-to-use, email-verified demo account that owns all seeded data so you
+// can log in immediately after seeding. Override via env vars.
+const DEMO_EMAIL = (process.env.SEED_USER_EMAIL ?? 'demo@habitmaxxing.local').toLowerCase();
+const DEMO_PASSWORD = process.env.SEED_USER_PASSWORD ?? 'password123';
 
 interface GroupSeed {
   key: string;
@@ -87,16 +93,28 @@ const habits: HabitSeed[] = [
 ];
 
 async function main() {
-  const existing = await prisma.habit.count();
+  // Ensure the demo user exists (email already verified for convenience).
+  const user = await prisma.user.upsert({
+    where: { email: DEMO_EMAIL },
+    update: {},
+    create: {
+      email: DEMO_EMAIL,
+      passwordHash: await bcrypt.hash(DEMO_PASSWORD, 12),
+      name: 'Demo',
+      emailVerified: true,
+    },
+  });
+
+  const existing = await prisma.habit.count({ where: { userId: user.id } });
   if (existing > 0) {
-    console.log(`Seed skipped: ${existing} habits already present.`);
+    console.log(`Seed skipped: ${existing} habits already present for ${DEMO_EMAIL}.`);
     return;
   }
 
   const groupIds = new Map<string, string>();
   for (const g of groups) {
     const created = await prisma.habitGroup.create({
-      data: { name: g.name, color: g.color, sortOrder: g.sortOrder },
+      data: { name: g.name, color: g.color, sortOrder: g.sortOrder, userId: user.id },
     });
     groupIds.set(g.key, created.id);
   }
@@ -115,12 +133,15 @@ async function main() {
         max: h.max,
         groupId,
         sortOrder,
+        userId: user.id,
       },
     });
     sortOrder += 10;
   }
 
-  console.log(`Seeded ${groups.length} groups and ${habits.length} habits.`);
+  console.log(
+    `Seeded ${groups.length} groups and ${habits.length} habits for ${DEMO_EMAIL} (password: ${DEMO_PASSWORD}).`,
+  );
 }
 
 main()

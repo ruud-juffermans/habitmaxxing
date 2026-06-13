@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/global.ts","./src/main.tsx","./src/styled.d.ts","./src/theme.ts","./src/types.ts","./src/components/habitinput.tsx","./src/components/ui.ts","./src/pages/history.tsx","./src/pages/periods.tsx","./src/pages/settings.tsx","./src/pages/stats.tsx","./src/pages/today.tsx"],"version":"5.9.3"}

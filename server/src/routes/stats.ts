@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { asyncRoute } from '../http.js';
+import { computeStreak } from '../streak.js';
 
 export const statsRouter = Router();
 
@@ -41,20 +42,7 @@ statsRouter.get(
 
     const result = habits.map((habit) => {
       const habitEntries = entries.filter((e) => e.habitId === habit.id);
-
-      let streak = 0;
-      if (habit.type === 'boolean') {
-        let cursor = today;
-        for (;;) {
-          const entry = habitEntries.find((e) => dateOnly(e.entryDate) === cursor);
-          if (entry?.valueBool === true) {
-            streak += 1;
-            cursor = shiftDays(cursor, -1);
-          } else {
-            break;
-          }
-        }
-      }
+      const { streak, streakUnit } = computeStreak(habit, habitEntries, today, since);
 
       const numericValues = habitEntries
         .map((e) => (e.valueNum !== null ? Number(e.valueNum) : null))
@@ -69,6 +57,7 @@ statsRouter.get(
         description: habit.description,
         type: habit.type,
         streak,
+        streakUnit,
         avg7,
         avg30,
         totalEntries: habitEntries.length,

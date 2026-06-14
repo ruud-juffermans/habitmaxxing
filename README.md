@@ -25,6 +25,8 @@ The full product spec lives in [`prd.md`](./prd.md).
 
 - **Accounts & auth** — email/password sign-up with email verification, secure httpOnly cookie sessions, and password reset by email. All habit data is scoped per user.
 - **Flexible habit types** — boolean, integer, decimal, score, time-of-day, duration, free text.
+- **Scheduling & frequency** — make a habit daily, on specific weekdays, N× per week, or every N days. The Today view shows only what's due, and streaks and completion percentages respect each habit's schedule.
+- **Goals & targets** — give a numeric habit a target (e.g. 2 L water, 8000 steps) with an at-least or at-most direction. "Done" means the goal was met, so streaks, History bars, and Stats all score goal attainment instead of just whether an entry exists. Habits without a goal keep the old "any entry counts" behaviour.
 - **Habit groups** — colour-coded categories that flow through the UI (today view, history calendar, stats).
 - **Today view** — log every habit for the current day in one place.
 - **History calendar** — month grid with completion bars per group; click any day to edit retroactively.
@@ -63,7 +65,7 @@ Side-by-side current-week (Mon–Sun) and current-month aggregates, grouped by c
 
 ### Settings
 
-Manage habits and groups: create, reorder, archive, and tweak units/min/max.
+Manage habits and groups: create, reorder, archive, and tweak units/min/max, schedules, and goals.
 
 ![Settings](docs/screenshots/settings.png)
 
@@ -182,8 +184,10 @@ npm run dev
 # client (new terminal)
 cd client
 npm install
-npm run dev
+VITE_API_URL=http://localhost:3001 VITE_APP_TZ=Europe/Amsterdam npm run dev
 ```
+
+> **Running the client outside Docker, you must pass `VITE_API_URL`** (and `VITE_APP_TZ`) — the Compose environment isn't loaded, so the client otherwise falls back to its own origin (`localhost:5173`), every API call fails, and **login silently does nothing** with no visible error.
 
 ### Production build
 
@@ -202,7 +206,7 @@ Schema is managed by Prisma. See [`server/prisma/schema.prisma`](./server/prisma
 - **Session** — a server-side session keyed by the SHA-256 hash of the cookie token; supports logout and revocation.
 - **VerificationToken** — single-use, expiring tokens for email verification and password reset (only their hashes are stored).
 - **HabitGroup** — colour-coded category (e.g. Health, Focus), owned by a user.
-- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group; owned by a user.
+- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group, a schedule (`daily`, `weekdays`, `weekly_count`, or `interval`), and an optional numeric goal (`goalTarget` plus an `at_least`/`at_most` `goalDirection`) that defines completion; owned by a user.
 - **Entry** — one row per `(habit, date)`; uniqueness is enforced at the DB level; owned by a user.
 
 Common Prisma tasks (run inside the `server` container or from `server/`):

@@ -65,10 +65,19 @@ export function Stats() {
                   {s.description && <Description>{s.description}</Description>}
                   <Meta>{s.type}</Meta>
                   <Rows>
-                    {s.type === 'boolean' && (
+                    <Stat>
+                      <StatLabel>Current streak</StatLabel>
+                      <StatValue>
+                        {s.streak} <Muted>{streakUnitLabel(s.streak, s.streakUnit)}</Muted>
+                      </StatValue>
+                    </Stat>
+                    {s.completionRate != null && (
                       <Stat>
-                        <StatLabel>Current streak</StatLabel>
-                        <StatValue>{s.streak} <Muted>day{s.streak === 1 ? '' : 's'}</Muted></StatValue>
+                        <StatLabel>Goal completion</StatLabel>
+                        <StatValue>
+                          {Math.round(s.completionRate * 100)}%{' '}
+                          <Muted>{s.completed}/{s.scheduled}</Muted>
+                        </StatValue>
                       </Stat>
                     )}
                     <Stat>
@@ -92,6 +101,11 @@ export function Stats() {
       </Sections>
     </>
   );
+}
+
+function streakUnitLabel(n: number, unit: 'days' | 'weeks'): string {
+  const singular = unit === 'weeks' ? 'week' : 'day';
+  return n === 1 ? singular : `${singular}s`;
 }
 
 function formatAvg(v: number | null, type: string): string {

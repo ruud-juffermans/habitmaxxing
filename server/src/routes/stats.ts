@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { asyncRoute } from '../http.js';
+import { computeStreak, type StreakHabit } from '../streak.js';
+import { isDueOn, weekStart } from '../schedule.js';
+import { toGoalable, toSchedulable } from '../habitSchedule.js';
+import { meetsGoal } from '../goal.js';
 
 export const statsRouter = Router();
 
@@ -41,20 +45,7 @@ statsRouter.get(
 
     const result = habits.map((habit) => {
       const habitEntries = entries.filter((e) => e.habitId === habit.id);
-
-      let streak = 0;
-      if (habit.type === 'boolean') {
-        let cursor = today;
-        for (;;) {
-          const entry = habitEntries.find((e) => dateOnly(e.entryDate) === cursor);
-          if (entry?.valueBool === true) {
-            streak += 1;
-            cursor = shiftDays(cursor, -1);
-          } else {
-            break;
-          }
-        }
-      }
+      const { streak, streakUnit } = computeStreak(habit, habitEntries, today, since);
 
       const numericValues = habitEntries
         .map((e) => (e.valueNum !== null ? Number(e.valueNum) : null))
@@ -62,6 +53,7 @@ statsRouter.get(
 
       const avg7 = averageInWindow(habitEntries, today, 7);
       const avg30 = averageInWindow(habitEntries, today, 30);
+      const { completed, scheduled } = completionInWindow(habit, habitEntries, today, since);
 
       return {
         habitId: habit.id,
@@ -69,9 +61,15 @@ statsRouter.get(
         description: habit.description,
         type: habit.type,
         streak,
+        streakUnit,
         avg7,
         avg30,
         totalEntries: habitEntries.length,
+        // Goal attainment over the window: days the goal was met vs days it was
+        // scheduled. `completionRate` is null when nothing was scheduled.
+        completed,
+        scheduled,
+        completionRate: scheduled > 0 ? completed / scheduled : null,
         latestValue: habitEntries[0] ?? null,
         allNumericCount: numericValues.length,
       };
@@ -80,6 +78,50 @@ statsRouter.get(
     res.json(result);
   }),
 );
+
+// Goal attainment over [since, today]: how many scheduled occurrences had their
+// goal met (`completed`) out of how many were scheduled (`scheduled`). Mirrors
+// the streak logic's notion of "done" so the two stay consistent.
+function completionInWindow(
+  habit: StreakHabit,
+  entries: Array<{ entryDate: Date; valueBool: boolean | null; valueNum: unknown; valueText: string | null; valueTime: string | null }>,
+  today: string,
+  since: string,
+): { completed: number; scheduled: number } {
+  const goalable = toGoalable(habit);
+
+  if (habit.scheduleKind === 'weekly_count') {
+    const target = habit.scheduleTarget ?? 0;
+    if (target <= 0) return { completed: 0, scheduled: 0 };
+    const metPerWeek = new Map<string, number>();
+    for (const e of entries) {
+      if (!meetsGoal(goalable, e)) continue;
+      const w = weekStart(dateOnly(e.entryDate));
+      metPerWeek.set(w, (metPerWeek.get(w) ?? 0) + 1);
+    }
+    let completed = 0;
+    let weeks = 0;
+    const floor = weekStart(since);
+    for (let cursor = weekStart(today); cursor >= floor; cursor = shiftDays(cursor, -7)) {
+      completed += Math.min(metPerWeek.get(cursor) ?? 0, target); // a week can't over-count
+      weeks += 1;
+    }
+    return { completed, scheduled: target * weeks };
+  }
+
+  const schedulable = toSchedulable(habit);
+  const metDays = new Set<string>();
+  for (const e of entries) if (meetsGoal(goalable, e)) metDays.add(dateOnly(e.entryDate));
+
+  let completed = 0;
+  let scheduled = 0;
+  for (let cursor = since; cursor <= today; cursor = shiftDays(cursor, 1)) {
+    if (!isDueOn(schedulable, cursor)) continue; // only scheduled days count toward the rate
+    scheduled += 1;
+    if (metDays.has(cursor)) completed += 1;
+  }
+  return { completed, scheduled };
+}
 
 function averageInWindow(
   entries: Array<{ entryDate: Date; valueNum: unknown; valueBool: boolean | null }>,

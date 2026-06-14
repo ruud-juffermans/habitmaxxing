@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { api } from '../api';
 import { HabitInput } from '../components/HabitInput';
 import type { DayPayload, Entry, Habit, HabitGroup } from '../types';
+import { meetsGoal } from '../goal';
 import { H1, Muted, PageHeader } from '../components/ui';
 
 export function History() {
@@ -99,7 +100,8 @@ export function History() {
             .map((e) => {
               const habit = habitById.get(e.habitId);
               if (!habit || habit.archived) return null;
-              if (!isCompleted(habit, e)) return null;
+              // A bar means the goal was met that day — not merely that an entry exists.
+              if (!meetsGoal(habit, e)) return null;
               const group = habit.groupId ? groupById.get(habit.groupId) : null;
               return {
                 id: e.id,
@@ -133,8 +135,18 @@ export function History() {
       {selectedDate && dayData && (
         <DayEditor>
           <H2Style>{formatHumanDate(selectedDate)}</H2Style>
+          {(() => {
+            const due = new Set(dayData.dueHabitIds);
+            const hasEntry = new Set(dayData.entries.map((e) => e.habitId));
+            // Show what was scheduled that day, plus anything already logged
+            // off-schedule so existing entries remain editable.
+            const editable = dayData.habits.filter((h) => due.has(h.id) || hasEntry.has(h.id));
+            if (editable.length === 0) {
+              return <Muted>Nothing was scheduled on this day.</Muted>;
+            }
+            return (
           <EntryList>
-            {dayData.habits.map((habit) => {
+            {editable.map((habit) => {
               const entry = dayData.entries.find((e) => e.habitId === habit.id) ?? null;
               const group = habit.groupId ? groupById.get(habit.groupId) : null;
               return (
@@ -151,6 +163,8 @@ export function History() {
               );
             })}
           </EntryList>
+            );
+          })()}
         </DayEditor>
       )}
     </>
@@ -191,16 +205,6 @@ function buildMonthGrid(month: string): Array<{ iso: string; day: number; inMont
     });
   }
   return days;
-}
-
-function isCompleted(habit: Habit, entry: Entry): boolean {
-  if (habit.type === 'boolean') return entry.valueBool === true;
-  return (
-    entry.valueNum != null ||
-    entry.valueText != null ||
-    entry.valueTime != null ||
-    entry.valueBool === true
-  );
 }
 
 function formatHumanDate(iso: string): string {

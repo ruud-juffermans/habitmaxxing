@@ -3,6 +3,7 @@ import type {
   AuthUser,
   DayPayload,
   Entry,
+  GoalDirection,
   Habit,
   HabitGroup,
   HabitStats,
@@ -104,6 +105,8 @@ export const api = {
     scheduleTarget?: number | null;
     scheduleEvery?: number | null;
     scheduleAnchor?: string | null;
+    goalTarget?: number | null;
+    goalDirection?: GoalDirection;
   }): Promise<Habit> {
     return request(`/api/habits`, { method: 'POST', body: JSON.stringify(data) });
   },

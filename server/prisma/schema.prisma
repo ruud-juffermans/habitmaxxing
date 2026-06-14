@@ -24,6 +24,11 @@ enum HabitScheduleKind {
   interval
 }
 
+enum GoalDirection {
+  at_least
+  at_most
+}
+
 enum TokenType {
   email_verification
   password_reset
@@ -35,17 +40,17 @@ enum UserRole {
 }
 
 model User {
-  id            String   @id @default(uuid()) @db.Uuid
-  email         String   @unique
-  passwordHash  String   @map("password_hash")
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
   name          String?
-  emailVerified Boolean  @default(false) @map("email_verified")
-  isGuest       Boolean  @default(false) @map("is_guest")
-  role          UserRole @default(user)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  isGuest       Boolean   @default(false) @map("is_guest")
+  role          UserRole  @default(user)
   // Null = active; a timestamp marks the account as suspended (and when).
   disabledAt    DateTime? @map("disabled_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   sessions Session[]
   tokens   VerificationToken[]
@@ -103,29 +108,36 @@ model HabitGroup {
 }
 
 model Habit {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String      @map("user_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
   name        String
   description String?
   type        HabitType
   unit        String?
-  min         Decimal?    @db.Decimal(12, 4)
-  max         Decimal?    @db.Decimal(12, 4)
-  sortOrder   Int         @default(0) @map("sort_order")
-  archived    Boolean     @default(false)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  groupId     String?     @map("group_id") @db.Uuid
+  min         Decimal?  @db.Decimal(12, 4)
+  max         Decimal?  @db.Decimal(12, 4)
+  sortOrder   Int       @default(0) @map("sort_order")
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  groupId     String?   @map("group_id") @db.Uuid
 
   // Scheduling: when is this habit "due"? Defaults to every day so habits that
   // predate this feature keep their existing behaviour. See server/src/schedule.ts.
   scheduleKind   HabitScheduleKind @default(daily) @map("schedule_kind")
-  scheduleDays   Int[]             @default([])     @map("schedule_days")   // ISO weekdays 1..7 (Mon..Sun), for `weekdays`
-  scheduleTarget Int?              @map("schedule_target")                  // times per week, for `weekly_count`
-  scheduleEvery  Int?              @map("schedule_every")                   // every N days, for `interval`
-  scheduleAnchor DateTime?         @db.Date @map("schedule_anchor")         // anchor/start date, for `interval`
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group       HabitGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  entries     Entry[]
+  scheduleDays   Int[]             @default([]) @map("schedule_days") // ISO weekdays 1..7 (Mon..Sun), for `weekdays`
+  scheduleTarget Int?              @map("schedule_target") // times per week, for `weekly_count`
+  scheduleEvery  Int?              @map("schedule_every") // every N days, for `interval`
+  scheduleAnchor DateTime?         @map("schedule_anchor") @db.Date // anchor/start date, for `interval`
+
+  // Goal: the numeric target that defines "done" for this habit. Null means the
+  // habit has no goal, so any logged entry counts as done (pre-feature behaviour).
+  // Only meaningful for numeric types (integer/decimal/score/duration); boolean
+  // habits are "done" when checked and time/text habits when an entry exists.
+  goalTarget    Decimal?      @map("goal_target") @db.Decimal(12, 4)
+  goalDirection GoalDirection @default(at_least) @map("goal_direction") // at_least: hit >= target; at_most: stay <= target
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group         HabitGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  entries       Entry[]
 
   @@index([userId])
   @@index([groupId])

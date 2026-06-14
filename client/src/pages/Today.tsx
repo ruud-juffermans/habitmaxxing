@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { api, todayISO } from '../api';
 import type { DayPayload, Entry, Habit, HabitGroup } from '../types';
 import { HabitInput } from '../components/HabitInput';
+import { goalOf, goalSummary } from '../components/GoalEditor';
+import { isGoalableType, meetsGoal } from '../goal';
 import { Card, H1, Muted, PageHeader } from '../components/ui';
 
 export function Today() {
@@ -116,6 +118,8 @@ export function Today() {
           {dueHabits.map((habit) => {
             const entry = entriesByHabit.get(habit.id) ?? null;
             const group = habit.groupId ? groupById.get(habit.groupId) : null;
+            const hasGoal = isGoalableType(habit.type) && habit.goalTarget != null;
+            const met = hasGoal && entry != null && meetsGoal(habit, entry);
             return (
               <Row key={habit.id} $accent={group?.color ?? null}>
                 <Label>
@@ -124,6 +128,12 @@ export function Today() {
                   <Meta>
                     {group && <GroupTag $color={group.color}>{group.name}</GroupTag>}
                     {typeLabel(habit)}
+                    {hasGoal && (
+                      <GoalBadge $met={met}>
+                        {met ? '✓ ' : ''}
+                        {goalSummary(habit.type, habit.unit, goalOf(habit))}
+                      </GoalBadge>
+                    )}
                     {savingIds.has(habit.id) && <SavingDot />}
                   </Meta>
                 </Label>
@@ -206,6 +216,21 @@ const Meta = styled.span`
   display: inline-flex;
   align-items: center;
   gap: ${({ theme }) => theme.space.xs};
+`;
+
+const GoalBadge = styled.span<{ $met: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  border: 1px solid
+    ${({ theme, $met }) => ($met ? theme.colors.success : theme.colors.border)};
+  background: ${({ theme, $met }) =>
+    $met ? `color-mix(in srgb, ${theme.colors.success} 18%, transparent)` : 'transparent'};
+  color: ${({ theme, $met }) => ($met ? theme.colors.success : theme.colors.textMuted)};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  white-space: nowrap;
 `;
 
 const SavingDot = styled.span`

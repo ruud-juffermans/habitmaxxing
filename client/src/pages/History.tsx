@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { api } from '../api';
 import { HabitInput } from '../components/HabitInput';
 import type { DayPayload, Entry, Habit, HabitGroup } from '../types';
+import { meetsGoal } from '../goal';
 import { H1, Muted, PageHeader } from '../components/ui';
 
 export function History() {
@@ -99,7 +100,8 @@ export function History() {
             .map((e) => {
               const habit = habitById.get(e.habitId);
               if (!habit || habit.archived) return null;
-              if (!isCompleted(habit, e)) return null;
+              // A bar means the goal was met that day — not merely that an entry exists.
+              if (!meetsGoal(habit, e)) return null;
               const group = habit.groupId ? groupById.get(habit.groupId) : null;
               return {
                 id: e.id,
@@ -203,16 +205,6 @@ function buildMonthGrid(month: string): Array<{ iso: string; day: number; inMont
     });
   }
   return days;
-}
-
-function isCompleted(habit: Habit, entry: Entry): boolean {
-  if (habit.type === 'boolean') return entry.valueBool === true;
-  return (
-    entry.valueNum != null ||
-    entry.valueText != null ||
-    entry.valueTime != null ||
-    entry.valueBool === true
-  );
 }
 
 function formatHumanDate(iso: string): string {

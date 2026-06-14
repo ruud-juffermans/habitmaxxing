@@ -3,11 +3,15 @@ import styled from 'styled-components';
 import { api } from '../api';
 import type { Entry, Habit, HabitGroup, HabitType } from '../types';
 import { scheduledOccurrences } from '../schedule';
+import { meetsGoal } from '../goal';
 import { H1, Muted, PageHeader } from '../components/ui';
+
+/** Goal attainment over the range: days the goal was met vs days scheduled. */
+type GoalProgress = { completed: number; total: number };
 
 type Aggregate =
   | { kind: 'boolean'; completed: number; total: number }
-  | { kind: 'numeric'; entries: number; avg: number | null; sum: number }
+  | { kind: 'numeric'; entries: number; avg: number | null; sum: number; goal: GoalProgress | null }
   | { kind: 'count'; entries: number };
 
 export interface PeriodRange {
@@ -149,8 +153,18 @@ function renderAggregate(agg: Aggregate, habit: Habit) {
     );
   }
   if (agg.kind === 'numeric') {
+    const goalPct =
+      agg.goal && agg.goal.total > 0 ? Math.round((agg.goal.completed / agg.goal.total) * 100) : 0;
     return (
       <>
+        {agg.goal && (
+          <Stat>
+            <StatLabel>Goal met</StatLabel>
+            <StatValue>
+              {agg.goal.completed} / {agg.goal.total} <Muted>({goalPct}%)</Muted>
+            </StatValue>
+          </Stat>
+        )}
         <Stat>
           <StatLabel>Average</StatLabel>
           <StatValue>{formatNumber(agg.avg, habit.type)}</StatValue>
@@ -177,19 +191,25 @@ function renderAggregate(agg: Aggregate, habit: Habit) {
 function aggregate(habit: Habit, all: Entry[], range: PeriodRange): Aggregate {
   const items = all.filter((e) => e.habitId === habit.id);
   if (habit.type === 'boolean') {
-    const completed = items.filter((e) => e.valueBool === true).length;
-    return { kind: 'boolean', completed, total: booleanTotal(habit, range) };
+    const completed = items.filter((e) => meetsGoal(habit, e)).length;
+    return { kind: 'boolean', completed, total: scheduledTotal(habit, range) };
   }
   if (isNumericType(habit.type)) {
     const nums = items
       .map((e) => (e.valueNum != null ? Number(e.valueNum) : null))
       .filter((v): v is number => v !== null && !Number.isNaN(v));
     const sum = nums.reduce((a, b) => a + b, 0);
+    // Goal attainment is only meaningful once a target is set.
+    const goal =
+      habit.goalTarget != null
+        ? { completed: items.filter((e) => meetsGoal(habit, e)).length, total: scheduledTotal(habit, range) }
+        : null;
     return {
       kind: 'numeric',
       entries: nums.length,
       avg: nums.length ? sum / nums.length : null,
       sum,
+      goal,
     };
   }
   const count = items.filter(
@@ -199,12 +219,12 @@ function aggregate(habit: Habit, all: Entry[], range: PeriodRange): Aggregate {
 }
 
 /**
- * How many times a boolean habit was *scheduled* in this range — the completion
+ * How many times a habit was *scheduled* in this range — the completion
  * denominator. The range start is clamped to the habit's creation date so it
  * isn't penalised for days before it existed, then we count scheduled
  * occurrences honouring its schedule (daily, weekdays, weekly_count, interval).
  */
-function booleanTotal(habit: Habit, range: PeriodRange): number {
+function scheduledTotal(habit: Habit, range: PeriodRange): number {
   const created = isoDate(new Date(habit.createdAt));
   const start = created > range.from ? created : range.from;
   if (start > range.to) return 0;

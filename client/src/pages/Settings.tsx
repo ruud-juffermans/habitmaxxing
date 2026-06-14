@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import styled, { css } from 'styled-components';
 import { api } from '../api';
-import type { Habit, HabitGroup, HabitSchedule, HabitType } from '../types';
+import type { GoalDirection, Habit, HabitGroup, HabitSchedule, HabitType } from '../types';
+import { isGoalableType } from '../goal';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
 import {
   ScheduleEditor,
@@ -9,6 +10,7 @@ import {
   isValidSchedule,
   scheduleSummary,
 } from '../components/ScheduleEditor';
+import { GoalEditor, goalOf, goalSummary, type HabitGoal } from '../components/GoalEditor';
 import { AccountSection } from './AccountSection';
 
 const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
@@ -99,6 +101,8 @@ export function Settings() {
   const [newUnit, setNewUnit] = useState('');
   const [newMin, setNewMin] = useState('');
   const [newMax, setNewMax] = useState('');
+  const [newGoalTarget, setNewGoalTarget] = useState('');
+  const [newGoalDirection, setNewGoalDirection] = useState<GoalDirection>('at_least');
   const [newGroupId, setNewGroupId] = useState<string>('');
   const [newSchedule, setNewSchedule] = useState<HabitSchedule>(() => defaultSchedule('daily'));
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -132,6 +136,9 @@ export function Settings() {
       unit: newUnit.trim() || null,
       min: newMin === '' ? null : Number(newMin),
       max: newMax === '' ? null : Number(newMax),
+      // A goal only applies to numeric types; ignore the field for the rest.
+      goalTarget: isGoalableType(newType) && newGoalTarget !== '' ? Number(newGoalTarget) : null,
+      goalDirection: newGoalDirection,
       sortOrder: (habits[habits.length - 1]?.sortOrder ?? 0) + 10,
       groupId: newGroupId || null,
       ...newSchedule,
@@ -141,6 +148,8 @@ export function Settings() {
     setNewUnit('');
     setNewMin('');
     setNewMax('');
+    setNewGoalTarget('');
+    setNewGoalDirection('at_least');
     setNewType('boolean');
     setNewGroupId('');
     setNewSchedule(defaultSchedule('daily'));
@@ -168,6 +177,13 @@ export function Settings() {
     if (isValidSchedule(schedule)) {
       await api.updateHabit(id, schedule);
     }
+  };
+
+  // Goal edits mirror schedule edits: update local state immediately, then
+  // persist. A null target is always valid (it just clears the goal).
+  const onGoalChange = async (id: string, goal: HabitGoal) => {
+    setHabits((prev) => prev.map((x) => (x.id === id ? { ...x, ...goal } : x)));
+    await api.updateHabit(id, goal);
   };
 
   const onCreateGroup = async () => {
@@ -301,6 +317,20 @@ export function Settings() {
           <ScheduleLabel>Schedule</ScheduleLabel>
           <ScheduleEditor value={newSchedule} onChange={setNewSchedule} />
         </ScheduleRow>
+        {isGoalableType(newType) && (
+          <ScheduleRow>
+            <ScheduleLabel>Goal</ScheduleLabel>
+            <GoalEditor
+              type={newType}
+              unit={newUnit.trim() || null}
+              value={{ goalTarget: newGoalTarget === '' ? null : Number(newGoalTarget), goalDirection: newGoalDirection }}
+              onChange={(g) => {
+                setNewGoalTarget(g.goalTarget == null ? '' : String(g.goalTarget));
+                setNewGoalDirection(g.goalDirection);
+              }}
+            />
+          </ScheduleRow>
+        )}
       </CollapsibleSection>
       </TopRow>
 
@@ -327,16 +357,17 @@ export function Settings() {
           <TableWrap>
           <Table>
             <colgroup>
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '7%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '13%' }} />
               <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '10%' }} />
               <col style={{ width: '6%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
               <col />
             </colgroup>
             <thead>
@@ -349,6 +380,7 @@ export function Settings() {
                 <Th>Unit</Th>
                 <Th>Min</Th>
                 <Th>Max</Th>
+                <Th>Goal</Th>
                 <Th>Order</Th>
                 <Th>Archived</Th>
                 <Th></Th>
@@ -424,6 +456,17 @@ export function Settings() {
                       onBlur={(e) => onUpdate(h.id, { max: e.target.value === '' ? null : Number(e.target.value) })}
                     />
                   </Td>
+                  <Td data-label="Goal">
+                    <ScheduleToggle
+                      type="button"
+                      $open={expandedId === h.id}
+                      aria-expanded={expandedId === h.id}
+                      disabled={!isGoalableType(h.type)}
+                      onClick={() => setExpandedId((cur) => (cur === h.id ? null : h.id))}
+                    >
+                      {goalSummary(h.type, h.unit, goalOf(h))}
+                    </ScheduleToggle>
+                  </Td>
                   <Td data-label="Order">
                     <Input
                       type="number"
@@ -448,11 +491,23 @@ export function Settings() {
                 </tr>
                 {expandedId === h.id && (
                   <tr>
-                    <EditorTd colSpan={11}>
-                      <ScheduleEditor
-                        value={scheduleOf(h)}
-                        onChange={(s) => onScheduleChange(h.id, s)}
-                      />
+                    <EditorTd colSpan={12}>
+                      <EditorGroup>
+                        <EditorHeading>Schedule</EditorHeading>
+                        <ScheduleEditor
+                          value={scheduleOf(h)}
+                          onChange={(s) => onScheduleChange(h.id, s)}
+                        />
+                      </EditorGroup>
+                      <EditorGroup>
+                        <EditorHeading>Goal</EditorHeading>
+                        <GoalEditor
+                          type={h.type}
+                          unit={h.unit}
+                          value={goalOf(h)}
+                          onChange={(g) => onGoalChange(h.id, g)}
+                        />
+                      </EditorGroup>
                     </EditorTd>
                   </tr>
                 )}
@@ -621,6 +676,24 @@ const ScheduleToggle = styled.button<{ $open: boolean }>`
   &:hover {
     border-color: ${({ theme }) => theme.colors.primary};
   }
+`;
+
+const EditorGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${({ theme }) => theme.space.md};
+
+  & + & {
+    margin-top: ${({ theme }) => theme.space.md};
+  }
+`;
+
+const EditorHeading = styled.span`
+  min-width: 64px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
 `;
 
 const EditorTd = styled.td`

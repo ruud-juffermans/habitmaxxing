@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { asyncRoute } from '../http.js';
+import { isDueOn, weekStart } from '../schedule.js';
+import { isLogged, toSchedulable } from '../habitSchedule.js';
 
 export const entriesRouter = Router();
 
@@ -28,7 +30,10 @@ entriesRouter.get(
   '/',
   asyncRoute(async (req, res) => {
     const date = dateStr.parse(req.query.date);
-    const [habits, entries] = await Promise.all([
+    // Pull the whole ISO week up to `date` so weekly_count habits know how much
+    // of their target is already met when deciding if they're still due.
+    const ws = weekStart(date);
+    const [habits, weekEntries] = await Promise.all([
       prisma.habit.findMany({
         where: { userId: req.user!.id, archived: false },
         orderBy: [
@@ -37,12 +42,28 @@ entriesRouter.get(
           { createdAt: 'asc' },
         ],
       }),
-      prisma.entry.findMany({ where: { userId: req.user!.id, entryDate: toDate(date) } }),
+      prisma.entry.findMany({
+        where: { userId: req.user!.id, entryDate: { gte: toDate(ws), lte: toDate(date) } },
+      }),
     ]);
+
+    const dayEntries = weekEntries.filter((e) => toDateOnly(e.entryDate) === date);
+
+    // Times each habit has been logged so far this week (for weekly_count).
+    const weekCount = new Map<string, number>();
+    for (const e of weekEntries) {
+      if (isLogged(e)) weekCount.set(e.habitId, (weekCount.get(e.habitId) ?? 0) + 1);
+    }
+
+    const dueHabitIds = habits
+      .filter((h) => isDueOn(toSchedulable(h), date, weekCount.get(h.id) ?? 0))
+      .map((h) => h.id);
+
     res.json({
       date,
       habits,
-      entries: entries.map((e) => ({ ...e, entryDate: toDateOnly(e.entryDate) })),
+      dueHabitIds,
+      entries: dayEntries.map((e) => ({ ...e, entryDate: toDateOnly(e.entryDate) })),
     });
   }),
 );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import styled, { css } from 'styled-components';
 import { api } from '../api';
 import type { Habit, HabitGroup, HabitType } from '../types';
@@ -30,6 +30,48 @@ function TrashIcon() {
   );
 }
 
+function ChevronIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Section>
+      <SectionHeader type="button" onClick={onToggle} aria-expanded={open}>
+        <SectionTitle>{title}</SectionTitle>
+        <Chevron $open={open}>
+          <ChevronIcon />
+        </Chevron>
+      </SectionHeader>
+      <SectionBody $open={open}>{children}</SectionBody>
+    </Section>
+  );
+}
+
 export function Settings() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [groups, setGroups] = useState<HabitGroup[]>([]);
@@ -44,6 +86,11 @@ export function Settings() {
 
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState(DEFAULT_COLOR);
+
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterGroupId, setFilterGroupId] = useState('');
 
   const reload = async () => {
     setLoading(true);
@@ -116,6 +163,12 @@ export function Settings() {
     reload();
   };
 
+  const filteredHabits = habits.filter((h) => {
+    const matchesName = h.name.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesGroup = !filterGroupId || h.groupId === filterGroupId;
+    return matchesName && matchesGroup;
+  });
+
   return (
     <>
       <PageHeader>
@@ -123,10 +176,8 @@ export function Settings() {
         <Muted>Customize what you track</Muted>
       </PageHeader>
 
-      <AccountSection />
-
-      <Section>
-        <SectionTitle>Groups</SectionTitle>
+      <TopRow>
+      <CollapsibleSection title="Groups" open={groupsOpen} onToggle={() => setGroupsOpen((v) => !v)}>
         <GroupAddRow>
           <Input
             placeholder="Group name"
@@ -144,12 +195,6 @@ export function Settings() {
           <GroupList>
             {groups.map((g) => (
               <GroupRow key={g.id}>
-                <Swatch style={{ background: g.color }} />
-                <Input
-                  value={g.name}
-                  onChange={(e) => setGroups((prev) => prev.map((x) => x.id === g.id ? { ...x, name: e.target.value } : x))}
-                  onBlur={(e) => e.target.value !== '' && onUpdateGroup(g.id, { name: e.target.value })}
-                />
                 <ColorInput
                   type="color"
                   value={g.color}
@@ -160,19 +205,25 @@ export function Settings() {
                   onBlur={(e) => onUpdateGroup(g.id, { color: e.target.value })}
                 />
                 <Input
+                  value={g.name}
+                  onChange={(e) => setGroups((prev) => prev.map((x) => x.id === g.id ? { ...x, name: e.target.value } : x))}
+                  onBlur={(e) => e.target.value !== '' && onUpdateGroup(g.id, { name: e.target.value })}
+                />
+                <Input
                   type="number"
                   value={String(g.sortOrder)}
                   onChange={(e) => setGroups((prev) => prev.map((x) => x.id === g.id ? { ...x, sortOrder: Number(e.target.value) } : x))}
                   onBlur={(e) => onUpdateGroup(g.id, { sortOrder: Number(e.target.value) })}
                 />
-                <Button variant="danger" onClick={() => onDeleteGroup(g.id)}>Delete</Button>
+                <IconButton variant="danger" aria-label="Delete group" onClick={() => onDeleteGroup(g.id)}>
+                  <TrashIcon />
+                </IconButton>
               </GroupRow>
             ))}
           </GroupList>
         )}
-</Section>
-<Section>
-        <SectionTitle>Add habit</SectionTitle>
+      </CollapsibleSection>
+      <CollapsibleSection title="Add habit" open={addOpen} onToggle={() => setAddOpen((v) => !v)}>
         <AddRow>
           <Input
             placeholder="Habit name"
@@ -216,12 +267,28 @@ export function Settings() {
             onChange={(e) => setNewDescription(e.target.value)}
           />
         </DescriptionRow>
-      </Section>
+      </CollapsibleSection>
+      </TopRow>
 
-      <Section>
+      <HabitsSection>
         <SectionTitle>Habits</SectionTitle>
+        <HabitsToolbar>
+          <Input
+            placeholder="Search habits by name…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Select value={filterGroupId} onChange={(e) => setFilterGroupId(e.target.value)}>
+            <option value="">All groups</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </Select>
+        </HabitsToolbar>
         {loading ? (
           <Muted>Loading…</Muted>
+        ) : filteredHabits.length === 0 ? (
+          <Muted>No habits found.</Muted>
         ) : (
           <TableWrap>
           <Table>
@@ -252,7 +319,7 @@ export function Settings() {
               </tr>
             </thead>
             <tbody>
-              {habits.map((h) => (
+              {filteredHabits.map((h) => (
                 <tr key={h.id}>
                   <Td data-label="Name" $full>
                     <Input
@@ -337,10 +404,26 @@ export function Settings() {
           </Table>
           </TableWrap>
         )}
-      </Section>
+      </HabitsSection>
     </>
   );
 }
+
+const TopRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${({ theme }) => theme.space.lg};
+  margin-bottom: ${({ theme }) => theme.space.lg};
+  align-items: stretch;
+
+  @media (min-width: ${({ theme }) => theme.breakpoints.lg}) {
+    grid-template-columns: 1fr 2fr;
+  }
+
+  & > section {
+    margin-bottom: 0;
+  }
+`;
 
 const Section = styled.section`
   background: ${({ theme }) => theme.colors.surface};
@@ -359,10 +442,81 @@ const SectionTitle = styled.h2`
   margin: 0 0 ${({ theme }) => theme.space.md};
 `;
 
+const SectionHeader = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+
+  & > h2 {
+    margin: 0;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    cursor: pointer;
+  }
+`;
+
+const Chevron = styled.span<{ $open: boolean }>`
+  display: none;
+  color: ${({ theme }) => theme.colors.textMuted};
+  transition: transform 0.15s ease;
+  transform: rotate(${({ $open }) => ($open ? '180deg' : '0deg')});
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: inline-flex;
+  }
+`;
+
+const SectionBody = styled.div<{ $open: boolean }>`
+  margin-top: ${({ theme }) => theme.space.md};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: ${({ $open }) => ($open ? 'block' : 'none')};
+  }
+`;
+
+const HabitsSection = styled.section`
+  margin-bottom: ${({ theme }) => theme.space.lg};
+`;
+
+const HabitsToolbar = styled.div`
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 220px);
+  gap: ${({ theme }) => theme.space.sm};
+  margin-bottom: ${({ theme }) => theme.space.md};
+
+  & > input,
+  & > select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const AddRow = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 80px 80px auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr minmax(0, 80px) minmax(0, 80px) auto;
   gap: ${({ theme }) => theme.space.sm};
+
+  & > input,
+  & > select {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
 
   @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
     grid-template-columns: 1fr 1fr;
@@ -384,6 +538,10 @@ const GroupAddRow = styled.div`
   gap: ${({ theme }) => theme.space.sm};
   margin-bottom: ${({ theme }) => theme.space.md};
 
+  & > input {
+    min-width: 0;
+  }
+
   @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
     grid-template-columns: 1fr 48px;
 
@@ -401,26 +559,40 @@ const GroupList = styled.div`
 
 const GroupRow = styled.div`
   display: grid;
-  grid-template-columns: 16px 1fr 48px 80px auto;
+  grid-template-columns: 48px 1fr 80px auto;
   gap: ${({ theme }) => theme.space.sm};
   align-items: center;
-`;
 
-const Swatch = styled.div`
-  width: 16px;
-  height: 16px;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
+  & > input {
+    min-width: 0;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    grid-template-columns: 48px 1fr 64px auto;
+  }
 `;
 
 const ColorInput = styled.input`
   width: 48px;
   height: 36px;
-  padding: 2px;
+  padding: 0;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.surface};
   cursor: pointer;
+  overflow: hidden;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: ${({ theme }) => theme.radii.md};
+  }
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: ${({ theme }) => theme.radii.md};
+  }
 `;
 
 const TableWrap = styled.div`
@@ -518,4 +690,13 @@ const DeleteButton = styled(Button)`
   align-items: center;
   justify-content: center;
   gap: ${({ theme }) => theme.space.xs};
+`;
+
+const IconButton = styled(Button)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
 `;

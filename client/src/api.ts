@@ -1,4 +1,14 @@
-import type { AdminUser, AuthUser, DayPayload, Entry, Habit, HabitGroup, HabitStats, HabitType } from './types';
+import type {
+  AdminUser,
+  AuthUser,
+  DayPayload,
+  Entry,
+  Habit,
+  HabitGroup,
+  HabitStats,
+  HabitType,
+  ScheduleKind,
+} from './types';
 
 const base = import.meta.env.VITE_API_URL ?? '';
 
@@ -89,6 +99,11 @@ export const api = {
     max?: number | null;
     sortOrder?: number;
     groupId?: string | null;
+    scheduleKind?: ScheduleKind;
+    scheduleDays?: number[];
+    scheduleTarget?: number | null;
+    scheduleEvery?: number | null;
+    scheduleAnchor?: string | null;
   }): Promise<Habit> {
     return request(`/api/habits`, { method: 'POST', body: JSON.stringify(data) });
   },

@@ -1,12 +1,29 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import styled, { css } from 'styled-components';
 import { api } from '../api';
-import type { Habit, HabitGroup, HabitType } from '../types';
+import type { Habit, HabitGroup, HabitSchedule, HabitType } from '../types';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
+import {
+  ScheduleEditor,
+  defaultSchedule,
+  isValidSchedule,
+  scheduleSummary,
+} from '../components/ScheduleEditor';
 import { AccountSection } from './AccountSection';
 
 const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
 const DEFAULT_COLOR = '#3357ff';
+
+// Pull just the schedule fields out of a habit row.
+function scheduleOf(h: Habit): HabitSchedule {
+  return {
+    scheduleKind: h.scheduleKind,
+    scheduleDays: h.scheduleDays,
+    scheduleTarget: h.scheduleTarget,
+    scheduleEvery: h.scheduleEvery,
+    scheduleAnchor: h.scheduleAnchor,
+  };
+}
 
 function TrashIcon() {
   return (
@@ -83,6 +100,8 @@ export function Settings() {
   const [newMin, setNewMin] = useState('');
   const [newMax, setNewMax] = useState('');
   const [newGroupId, setNewGroupId] = useState<string>('');
+  const [newSchedule, setNewSchedule] = useState<HabitSchedule>(() => defaultSchedule('daily'));
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState(DEFAULT_COLOR);
@@ -115,6 +134,7 @@ export function Settings() {
       max: newMax === '' ? null : Number(newMax),
       sortOrder: (habits[habits.length - 1]?.sortOrder ?? 0) + 10,
       groupId: newGroupId || null,
+      ...newSchedule,
     });
     setNewName('');
     setNewDescription('');
@@ -123,6 +143,7 @@ export function Settings() {
     setNewMax('');
     setNewType('boolean');
     setNewGroupId('');
+    setNewSchedule(defaultSchedule('daily'));
     reload();
   };
 
@@ -138,6 +159,15 @@ export function Settings() {
     if (!confirm('Delete this habit and all its entries?')) return;
     await api.deleteHabit(id);
     reload();
+  };
+
+  // Schedule edits update local state immediately (so weekday toggles feel
+  // instant) and persist once the schedule is valid — no full reload/flash.
+  const onScheduleChange = async (id: string, schedule: HabitSchedule) => {
+    setHabits((prev) => prev.map((x) => (x.id === id ? { ...x, ...schedule } : x)));
+    if (isValidSchedule(schedule)) {
+      await api.updateHabit(id, schedule);
+    }
   };
 
   const onCreateGroup = async () => {
@@ -267,6 +297,10 @@ export function Settings() {
             onChange={(e) => setNewDescription(e.target.value)}
           />
         </DescriptionRow>
+        <ScheduleRow>
+          <ScheduleLabel>Schedule</ScheduleLabel>
+          <ScheduleEditor value={newSchedule} onChange={setNewSchedule} />
+        </ScheduleRow>
       </CollapsibleSection>
       </TopRow>
 
@@ -293,15 +327,16 @@ export function Settings() {
           <TableWrap>
           <Table>
             <colgroup>
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
               <col style={{ width: '16%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '8%' }} />
               <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
               <col />
             </colgroup>
             <thead>
@@ -310,6 +345,7 @@ export function Settings() {
                 <Th>Description</Th>
                 <Th>Type</Th>
                 <Th>Group</Th>
+                <Th>Schedule</Th>
                 <Th>Unit</Th>
                 <Th>Min</Th>
                 <Th>Max</Th>
@@ -320,7 +356,8 @@ export function Settings() {
             </thead>
             <tbody>
               {filteredHabits.map((h) => (
-                <tr key={h.id}>
+                <Fragment key={h.id}>
+                <tr>
                   <Td data-label="Name" $full>
                     <Input
                       value={h.name}
@@ -353,6 +390,16 @@ export function Settings() {
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </Select>
+                  </Td>
+                  <Td data-label="Schedule">
+                    <ScheduleToggle
+                      type="button"
+                      $open={expandedId === h.id}
+                      aria-expanded={expandedId === h.id}
+                      onClick={() => setExpandedId((cur) => (cur === h.id ? null : h.id))}
+                    >
+                      {scheduleSummary(scheduleOf(h))}
+                    </ScheduleToggle>
                   </Td>
                   <Td data-label="Unit">
                     <Input
@@ -399,6 +446,17 @@ export function Settings() {
                     </DeleteButton>
                   </Td>
                 </tr>
+                {expandedId === h.id && (
+                  <tr>
+                    <EditorTd colSpan={11}>
+                      <ScheduleEditor
+                        value={scheduleOf(h)}
+                        onChange={(s) => onScheduleChange(h.id, s)}
+                      />
+                    </EditorTd>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </Table>
@@ -530,6 +588,52 @@ const AddRow = styled.div`
 const DescriptionRow = styled.div`
   margin-top: ${({ theme }) => theme.space.sm};
   width: 100%;
+`;
+
+const ScheduleRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${({ theme }) => theme.space.md};
+  margin-top: ${({ theme }) => theme.space.md};
+`;
+
+const ScheduleLabel = styled.span`
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
+`;
+
+const ScheduleToggle = styled.button<{ $open: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  border: 1px solid ${({ theme, $open }) => ($open ? theme.colors.primary : theme.colors.border)};
+  border-radius: ${({ theme }) => theme.radii.md};
+  font: inherit;
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
+const EditorTd = styled.td`
+  padding: ${({ theme }) => theme.space.md} ${({ theme }) => theme.space.sm}
+    ${({ theme }) => theme.space.lg};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    display: block;
+    grid-column: 1 / -1;
+    padding: 0;
+    border-bottom: none;
+  }
 `;
 
 const GroupAddRow = styled.div`

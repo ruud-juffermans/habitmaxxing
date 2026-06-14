@@ -15,6 +15,12 @@ interface GroupSeed {
   sortOrder: number;
 }
 
+// A non-daily schedule for a seeded habit. Omit for the default (daily).
+type SeedSchedule =
+  | { kind: 'weekdays'; days: number[] } // ISO 1..7 (Mon..Sun)
+  | { kind: 'weekly_count'; target: number }
+  | { kind: 'interval'; every: number; anchor: string }; // anchor 'YYYY-MM-DD'
+
 interface HabitSeed {
   name: string;
   type: HabitType;
@@ -23,6 +29,7 @@ interface HabitSeed {
   unit?: string;
   min?: number;
   max?: number;
+  schedule?: SeedSchedule;
 }
 
 const groups: GroupSeed[] = [
@@ -46,13 +53,13 @@ const habits: HabitSeed[] = [
   { name: 'Morning sunlight', type: 'boolean', group: 'sleep', description: 'Daylight within an hour of waking' },
 
   // Fitness & Movement
-  { name: 'Workout completed', type: 'boolean', group: 'fitness' },
+  { name: 'Workout completed', type: 'boolean', group: 'fitness', schedule: { kind: 'weekly_count', target: 4 } },
   { name: 'Workout type', type: 'text', group: 'fitness', description: 'Strength, run, yoga, etc.' },
   { name: 'Steps', type: 'integer', group: 'fitness' },
   { name: 'Active minutes', type: 'duration', unit: 'min', group: 'fitness' },
   { name: 'Stretch / mobility', type: 'boolean', group: 'fitness' },
   { name: 'Resting heart rate', type: 'integer', unit: 'bpm', group: 'fitness' },
-  { name: 'Weight', type: 'decimal', unit: 'kg', group: 'fitness' },
+  { name: 'Weight', type: 'decimal', unit: 'kg', group: 'fitness', schedule: { kind: 'interval', every: 7, anchor: '2026-01-05' } },
 
   // Nutrition
   { name: 'Water intake', type: 'decimal', unit: 'L', group: 'nutrition' },
@@ -66,7 +73,7 @@ const habits: HabitSeed[] = [
   // Mind & Focus
   { name: '30 minutes reading', type: 'boolean', group: 'mind' },
   { name: 'Meditation', type: 'duration', unit: 'min', group: 'mind' },
-  { name: 'Deep work', type: 'duration', unit: 'min', group: 'mind', description: 'Focused, distraction-free work' },
+  { name: 'Deep work', type: 'duration', unit: 'min', group: 'mind', description: 'Focused, distraction-free work', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] } },
   { name: 'Learning / study', type: 'duration', unit: 'min', group: 'mind' },
   { name: 'Journaling', type: 'boolean', group: 'mind' },
   { name: 'Phone screen time', type: 'duration', unit: 'min', group: 'mind' },
@@ -123,6 +130,7 @@ async function main() {
   for (const h of habits) {
     const groupId = groupIds.get(h.group);
     if (!groupId) throw new Error(`Unknown group "${h.group}" for habit "${h.name}"`);
+    const s = h.schedule;
     await prisma.habit.create({
       data: {
         name: h.name,
@@ -134,6 +142,11 @@ async function main() {
         groupId,
         sortOrder,
         userId: user.id,
+        scheduleKind: s?.kind ?? 'daily',
+        scheduleDays: s?.kind === 'weekdays' ? s.days : [],
+        scheduleTarget: s?.kind === 'weekly_count' ? s.target : null,
+        scheduleEvery: s?.kind === 'interval' ? s.every : null,
+        scheduleAnchor: s?.kind === 'interval' ? new Date(`${s.anchor}T00:00:00.000Z`) : null,
       },
     });
     sortOrder += 10;

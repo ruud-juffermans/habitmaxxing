@@ -25,6 +25,7 @@ The full product spec lives in [`prd.md`](./prd.md).
 
 - **Accounts & auth** — email/password sign-up with email verification, secure httpOnly cookie sessions, and password reset by email. All habit data is scoped per user.
 - **Flexible habit types** — boolean, integer, decimal, score, time-of-day, duration, free text.
+- **Scheduling & frequency** — make a habit daily, on specific weekdays, N× per week, or every N days. The Today view shows only what's due, and streaks and completion percentages respect each habit's schedule.
 - **Habit groups** — colour-coded categories that flow through the UI (today view, history calendar, stats).
 - **Today view** — log every habit for the current day in one place.
 - **History calendar** — month grid with completion bars per group; click any day to edit retroactively.
@@ -202,7 +203,7 @@ Schema is managed by Prisma. See [`server/prisma/schema.prisma`](./server/prisma
 - **Session** — a server-side session keyed by the SHA-256 hash of the cookie token; supports logout and revocation.
 - **VerificationToken** — single-use, expiring tokens for email verification and password reset (only their hashes are stored).
 - **HabitGroup** — colour-coded category (e.g. Health, Focus), owned by a user.
-- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group; owned by a user.
+- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group, and a schedule (`daily`, `weekdays`, `weekly_count`, or `interval`); owned by a user.
 - **Entry** — one row per `(habit, date)`; uniqueness is enforced at the DB level; owned by a user.
 
 Common Prisma tasks (run inside the `server` container or from `server/`):

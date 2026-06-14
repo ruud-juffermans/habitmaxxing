@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { api } from '../api';
 import type { Entry, Habit, HabitGroup, HabitType } from '../types';
+import { scheduledOccurrences } from '../schedule';
 import { H1, Muted, PageHeader } from '../components/ui';
 
 type Aggregate =
@@ -198,21 +199,16 @@ function aggregate(habit: Habit, all: Entry[], range: PeriodRange): Aggregate {
 }
 
 /**
- * Days a boolean habit could have been completed in this range. For fixed
- * ranges (week/month) that's range.days; for all time we count from the day
- * the habit was created (clamped to the range start) up to the range end.
+ * How many times a boolean habit was *scheduled* in this range — the completion
+ * denominator. The range start is clamped to the habit's creation date so it
+ * isn't penalised for days before it existed, then we count scheduled
+ * occurrences honouring its schedule (daily, weekdays, weekly_count, interval).
  */
 function booleanTotal(habit: Habit, range: PeriodRange): number {
-  if (range.days != null) return range.days;
   const created = isoDate(new Date(habit.createdAt));
   const start = created > range.from ? created : range.from;
-  return Math.max(1, daysBetweenInclusive(start, range.to));
-}
-
-function daysBetweenInclusive(from: string, to: string): number {
-  const a = new Date(`${from}T00:00:00`).getTime();
-  const b = new Date(`${to}T00:00:00`).getTime();
-  return Math.round((b - a) / 86_400_000) + 1;
+  if (start > range.to) return 0;
+  return scheduledOccurrences(habit, start, range.to);
 }
 
 function isNumericType(t: HabitType): boolean {

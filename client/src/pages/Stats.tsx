@@ -65,12 +65,12 @@ export function Stats() {
                   {s.description && <Description>{s.description}</Description>}
                   <Meta>{s.type}</Meta>
                   <Rows>
-                    {s.type === 'boolean' && (
-                      <Stat>
-                        <StatLabel>Current streak</StatLabel>
-                        <StatValue>{s.streak} <Muted>day{s.streak === 1 ? '' : 's'}</Muted></StatValue>
-                      </Stat>
-                    )}
+                    <Stat>
+                      <StatLabel>Current streak</StatLabel>
+                      <StatValue>
+                        {s.streak} <Muted>{streakUnitLabel(s.streak, s.streakUnit)}</Muted>
+                      </StatValue>
+                    </Stat>
                     <Stat>
                       <StatLabel>7-day avg</StatLabel>
                       <StatValue>{formatAvg(s.avg7, s.type)}</StatValue>
@@ -92,6 +92,11 @@ export function Stats() {
       </Sections>
     </>
   );
+}
+
+function streakUnitLabel(n: number, unit: 'days' | 'weeks'): string {
+  const singular = unit === 'weeks' ? 'week' : 'day';
+  return n === 1 ? singular : `${singular}s`;
 }
 
 function formatAvg(v: number | null, type: string): string {

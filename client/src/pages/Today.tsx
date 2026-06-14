@@ -29,6 +29,14 @@ export function Today() {
     return map;
   }, [data]);
 
+  // Only the habits scheduled (due) today are shown; the rest are reachable
+  // from History. weekly_count habits drop off once their weekly target is met.
+  const dueHabits = useMemo(() => {
+    if (!data) return [];
+    const due = new Set(data.dueHabitIds);
+    return data.habits.filter((h) => due.has(h.id));
+  }, [data]);
+
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const saveEntry = useCallback(
@@ -99,9 +107,13 @@ export function Today() {
         <Card>
           <Muted>No habits yet. Add some on the Settings page.</Muted>
         </Card>
+      ) : dueHabits.length === 0 ? (
+        <Card>
+          <Muted>Nothing scheduled for today 🎉</Muted>
+        </Card>
       ) : (
         <List>
-          {data.habits.map((habit) => {
+          {dueHabits.map((habit) => {
             const entry = entriesByHabit.get(habit.id) ?? null;
             const group = habit.groupId ? groupById.get(habit.groupId) : null;
             return (

@@ -17,6 +17,13 @@ enum HabitType {
   text
 }
 
+enum HabitScheduleKind {
+  daily
+  weekdays
+  weekly_count
+  interval
+}
+
 enum TokenType {
   email_verification
   password_reset
@@ -108,6 +115,14 @@ model Habit {
   archived    Boolean     @default(false)
   createdAt   DateTime    @default(now()) @map("created_at")
   groupId     String?     @map("group_id") @db.Uuid
+
+  // Scheduling: when is this habit "due"? Defaults to every day so habits that
+  // predate this feature keep their existing behaviour. See server/src/schedule.ts.
+  scheduleKind   HabitScheduleKind @default(daily) @map("schedule_kind")
+  scheduleDays   Int[]             @default([])     @map("schedule_days")   // ISO weekdays 1..7 (Mon..Sun), for `weekdays`
+  scheduleTarget Int?              @map("schedule_target")                  // times per week, for `weekly_count`
+  scheduleEvery  Int?              @map("schedule_every")                   // every N days, for `interval`
+  scheduleAnchor DateTime?         @db.Date @map("schedule_anchor")         // anchor/start date, for `interval`
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   group       HabitGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   entries     Entry[]

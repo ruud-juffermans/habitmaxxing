@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { api, todayISO } from '../api';
 import type { DayPayload, Entry, Habit, HabitGroup } from '../types';
 import { HabitInput } from '../components/HabitInput';
+import { goalOf, goalSummary } from '../components/GoalEditor';
+import { isGoalableType, meetsGoal } from '../goal';
 import { Card, H1, Muted, PageHeader } from '../components/ui';
 
 export function Today() {
@@ -27,6 +29,14 @@ export function Today() {
     const map = new Map<string, Entry>();
     data?.entries.forEach((e) => map.set(e.habitId, e));
     return map;
+  }, [data]);
+
+  // Only the habits scheduled (due) today are shown; the rest are reachable
+  // from History. weekly_count habits drop off once their weekly target is met.
+  const dueHabits = useMemo(() => {
+    if (!data) return [];
+    const due = new Set(data.dueHabitIds);
+    return data.habits.filter((h) => due.has(h.id));
   }, [data]);
 
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -99,11 +109,17 @@ export function Today() {
         <Card>
           <Muted>No habits yet. Add some on the Settings page.</Muted>
         </Card>
+      ) : dueHabits.length === 0 ? (
+        <Card>
+          <Muted>Nothing scheduled for today 🎉</Muted>
+        </Card>
       ) : (
         <List>
-          {data.habits.map((habit) => {
+          {dueHabits.map((habit) => {
             const entry = entriesByHabit.get(habit.id) ?? null;
             const group = habit.groupId ? groupById.get(habit.groupId) : null;
+            const hasGoal = isGoalableType(habit.type) && habit.goalTarget != null;
+            const met = hasGoal && entry != null && meetsGoal(habit, entry);
             return (
               <Row key={habit.id} $accent={group?.color ?? null}>
                 <Label>
@@ -112,6 +128,12 @@ export function Today() {
                   <Meta>
                     {group && <GroupTag $color={group.color}>{group.name}</GroupTag>}
                     {typeLabel(habit)}
+                    {hasGoal && (
+                      <GoalBadge $met={met}>
+                        {met ? '✓ ' : ''}
+                        {goalSummary(habit.type, habit.unit, goalOf(habit))}
+                      </GoalBadge>
+                    )}
                     {savingIds.has(habit.id) && <SavingDot />}
                   </Meta>
                 </Label>
@@ -194,6 +216,21 @@ const Meta = styled.span`
   display: inline-flex;
   align-items: center;
   gap: ${({ theme }) => theme.space.xs};
+`;
+
+const GoalBadge = styled.span<{ $met: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  border: 1px solid
+    ${({ theme, $met }) => ($met ? theme.colors.success : theme.colors.border)};
+  background: ${({ theme, $met }) =>
+    $met ? `color-mix(in srgb, ${theme.colors.success} 18%, transparent)` : 'transparent'};
+  color: ${({ theme, $met }) => ($met ? theme.colors.success : theme.colors.textMuted)};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  white-space: nowrap;
 `;
 
 const SavingDot = styled.span`

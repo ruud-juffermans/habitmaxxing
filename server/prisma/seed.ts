@@ -15,6 +15,16 @@ interface GroupSeed {
   sortOrder: number;
 }
 
+// A non-daily schedule for a seeded habit. Omit for the default (daily).
+type SeedSchedule =
+  | { kind: 'weekdays'; days: number[] } // ISO 1..7 (Mon..Sun)
+  | { kind: 'weekly_count'; target: number }
+  | { kind: 'interval'; every: number; anchor: string }; // anchor 'YYYY-MM-DD'
+
+// A goal for a seeded habit: the target that defines "done". Direction defaults
+// to at_least (hit the number); use at_most for limits like caffeine or spending.
+type SeedGoal = { target: number; direction?: 'at_least' | 'at_most' };
+
 interface HabitSeed {
   name: string;
   type: HabitType;
@@ -23,6 +33,8 @@ interface HabitSeed {
   unit?: string;
   min?: number;
   max?: number;
+  goal?: SeedGoal;
+  schedule?: SeedSchedule;
 }
 
 const groups: GroupSeed[] = [
@@ -40,40 +52,40 @@ const habits: HabitSeed[] = [
   // Sleep & Recovery
   { name: 'Wake-up time', type: 'time', group: 'sleep' },
   { name: 'Bedtime', type: 'time', group: 'sleep' },
-  { name: 'Hours slept', type: 'decimal', unit: 'h', group: 'sleep' },
-  { name: 'Sleep score', type: 'score', min: 1, max: 10, group: 'sleep', description: 'How rested you feel, 1–10' },
+  { name: 'Hours slept', type: 'decimal', unit: 'h', group: 'sleep', goal: { target: 7.5 } },
+  { name: 'Sleep score', type: 'score', min: 1, max: 10, group: 'sleep', description: 'How rested you feel, 1–10', goal: { target: 7 } },
   { name: 'No screens 1h before bed', type: 'boolean', group: 'sleep' },
   { name: 'Morning sunlight', type: 'boolean', group: 'sleep', description: 'Daylight within an hour of waking' },
 
   // Fitness & Movement
-  { name: 'Workout completed', type: 'boolean', group: 'fitness' },
+  { name: 'Workout completed', type: 'boolean', group: 'fitness', schedule: { kind: 'weekly_count', target: 4 } },
   { name: 'Workout type', type: 'text', group: 'fitness', description: 'Strength, run, yoga, etc.' },
-  { name: 'Steps', type: 'integer', group: 'fitness' },
-  { name: 'Active minutes', type: 'duration', unit: 'min', group: 'fitness' },
+  { name: 'Steps', type: 'integer', group: 'fitness', goal: { target: 8000 } },
+  { name: 'Active minutes', type: 'duration', unit: 'min', group: 'fitness', goal: { target: 30 } },
   { name: 'Stretch / mobility', type: 'boolean', group: 'fitness' },
   { name: 'Resting heart rate', type: 'integer', unit: 'bpm', group: 'fitness' },
-  { name: 'Weight', type: 'decimal', unit: 'kg', group: 'fitness' },
+  { name: 'Weight', type: 'decimal', unit: 'kg', group: 'fitness', schedule: { kind: 'interval', every: 7, anchor: '2026-01-05' } },
 
   // Nutrition
-  { name: 'Water intake', type: 'decimal', unit: 'L', group: 'nutrition' },
-  { name: 'Servings of vegetables', type: 'integer', group: 'nutrition' },
-  { name: 'Protein', type: 'integer', unit: 'g', group: 'nutrition' },
+  { name: 'Water intake', type: 'decimal', unit: 'L', group: 'nutrition', goal: { target: 2 } },
+  { name: 'Servings of vegetables', type: 'integer', group: 'nutrition', goal: { target: 5 } },
+  { name: 'Protein', type: 'integer', unit: 'g', group: 'nutrition', goal: { target: 120 } },
   { name: 'Cooked at home', type: 'boolean', group: 'nutrition' },
   { name: 'No junk food', type: 'boolean', group: 'nutrition' },
-  { name: 'Caffeine cups', type: 'integer', group: 'nutrition' },
-  { name: 'Alcohol drinks', type: 'integer', group: 'nutrition' },
+  { name: 'Caffeine cups', type: 'integer', group: 'nutrition', goal: { target: 2, direction: 'at_most' } },
+  { name: 'Alcohol drinks', type: 'integer', group: 'nutrition', goal: { target: 1, direction: 'at_most' } },
 
   // Mind & Focus
   { name: '30 minutes reading', type: 'boolean', group: 'mind' },
-  { name: 'Meditation', type: 'duration', unit: 'min', group: 'mind' },
-  { name: 'Deep work', type: 'duration', unit: 'min', group: 'mind', description: 'Focused, distraction-free work' },
+  { name: 'Meditation', type: 'duration', unit: 'min', group: 'mind', goal: { target: 10 } },
+  { name: 'Deep work', type: 'duration', unit: 'min', group: 'mind', description: 'Focused, distraction-free work', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] }, goal: { target: 90 } },
   { name: 'Learning / study', type: 'duration', unit: 'min', group: 'mind' },
   { name: 'Journaling', type: 'boolean', group: 'mind' },
-  { name: 'Phone screen time', type: 'duration', unit: 'min', group: 'mind' },
+  { name: 'Phone screen time', type: 'duration', unit: 'min', group: 'mind', goal: { target: 120, direction: 'at_most' } },
 
   // Mood & Wellbeing
-  { name: 'Mood', type: 'score', min: 1, max: 10, group: 'mood', description: 'Overall mood, 1–10' },
-  { name: 'Energy level', type: 'score', min: 1, max: 10, group: 'mood' },
+  { name: 'Mood', type: 'score', min: 1, max: 10, group: 'mood', description: 'Overall mood, 1–10', goal: { target: 7 } },
+  { name: 'Energy level', type: 'score', min: 1, max: 10, group: 'mood', goal: { target: 7 } },
   { name: 'Stress level', type: 'score', min: 1, max: 10, group: 'mood' },
   { name: 'Time outdoors', type: 'duration', unit: 'min', group: 'mood' },
   { name: 'Meaningful social contact', type: 'boolean', group: 'mood', description: 'Real connection with someone' },
@@ -88,7 +100,7 @@ const habits: HabitSeed[] = [
 
   // Finance
   { name: 'Tracked spending', type: 'boolean', group: 'finance' },
-  { name: 'Money spent', type: 'decimal', group: 'finance' },
+  { name: 'Money spent', type: 'decimal', group: 'finance', goal: { target: 50, direction: 'at_most' } },
   { name: 'No impulse purchase', type: 'boolean', group: 'finance' },
 ];
 
@@ -123,6 +135,7 @@ async function main() {
   for (const h of habits) {
     const groupId = groupIds.get(h.group);
     if (!groupId) throw new Error(`Unknown group "${h.group}" for habit "${h.name}"`);
+    const s = h.schedule;
     await prisma.habit.create({
       data: {
         name: h.name,
@@ -134,6 +147,13 @@ async function main() {
         groupId,
         sortOrder,
         userId: user.id,
+        goalTarget: h.goal?.target ?? null,
+        goalDirection: h.goal?.direction ?? 'at_least',
+        scheduleKind: s?.kind ?? 'daily',
+        scheduleDays: s?.kind === 'weekdays' ? s.days : [],
+        scheduleTarget: s?.kind === 'weekly_count' ? s.target : null,
+        scheduleEvery: s?.kind === 'interval' ? s.every : null,
+        scheduleAnchor: s?.kind === 'interval' ? new Date(`${s.anchor}T00:00:00.000Z`) : null,
       },
     });
     sortOrder += 10;

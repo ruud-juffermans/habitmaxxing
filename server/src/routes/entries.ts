@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { asyncRoute } from '../http.js';
 import { isDueOn, weekStart } from '../schedule.js';
-import { isLogged, toSchedulable } from '../habitSchedule.js';
+import { toGoalable, toSchedulable } from '../habitSchedule.js';
+import { meetsGoal } from '../goal.js';
 
 export const entriesRouter = Router();
 
@@ -49,10 +50,15 @@ entriesRouter.get(
 
     const dayEntries = weekEntries.filter((e) => toDateOnly(e.entryDate) === date);
 
-    // Times each habit has been logged so far this week (for weekly_count).
+    // Times each habit *met its goal* so far this week (for weekly_count). A
+    // logged-but-short day doesn't advance the target, so the habit stays due.
+    const habitById = new Map(habits.map((h) => [h.id, h]));
     const weekCount = new Map<string, number>();
     for (const e of weekEntries) {
-      if (isLogged(e)) weekCount.set(e.habitId, (weekCount.get(e.habitId) ?? 0) + 1);
+      const habit = habitById.get(e.habitId);
+      if (habit && meetsGoal(toGoalable(habit), e)) {
+        weekCount.set(e.habitId, (weekCount.get(e.habitId) ?? 0) + 1);
+      }
     }
 
     const dueHabitIds = habits

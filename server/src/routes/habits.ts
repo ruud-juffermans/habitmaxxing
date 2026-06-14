@@ -7,6 +7,7 @@ export const habitsRouter = Router();
 
 const habitTypes = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'] as const;
 const scheduleKinds = ['daily', 'weekdays', 'weekly_count', 'interval'] as const;
+const goalDirections = ['at_least', 'at_most'] as const;
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
 
 const habitBase = z.object({
@@ -25,6 +26,10 @@ const habitBase = z.object({
   scheduleTarget: z.number().int().min(1).max(7).nullish(),
   scheduleEvery: z.number().int().min(1).max(365).nullish(),
   scheduleAnchor: dateStr.nullish(),
+  // Goal: numeric target that defines "done". Only meaningful for numeric types;
+  // null clears the goal (any logged value counts). Direction defaults server-side.
+  goalTarget: z.number().nullish(),
+  goalDirection: z.enum(goalDirections).optional(),
 });
 
 // Each schedule kind requires its own fields; flag missing/invalid combos.

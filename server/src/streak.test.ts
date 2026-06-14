@@ -1,9 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStreak, type StreakEntry } from './streak.js';
-import type { HabitScheduleFields } from './habitSchedule.js';
+import { computeStreak, type StreakEntry, type StreakHabit } from './streak.js';
 
-const dailyHabit: HabitScheduleFields = {
+const dailyHabit: StreakHabit = {
+  type: 'boolean',
+  goalTarget: null,
+  goalDirection: 'at_least',
   scheduleKind: 'daily',
   scheduleDays: [],
   scheduleTarget: null,
@@ -43,7 +45,7 @@ describe('computeStreak — daily', () => {
 });
 
 describe('computeStreak — weekdays', () => {
-  const habit: HabitScheduleFields = { ...dailyHabit, scheduleKind: 'weekdays', scheduleDays: [1, 3, 5] };
+  const habit: StreakHabit = { ...dailyHabit, scheduleKind: 'weekdays', scheduleDays: [1, 3, 5] };
   it('skips non-scheduled days without breaking', () => {
     // Scheduled days up to Fri 2026-06-12: 6/12(Fri), 6/10(Wed), 6/8(Mon)...
     // today 6/14 is Sun (not scheduled) so it's ignored.
@@ -58,7 +60,7 @@ describe('computeStreak — weekdays', () => {
 });
 
 describe('computeStreak — interval', () => {
-  const habit: HabitScheduleFields = { ...dailyHabit, scheduleKind: 'interval', scheduleEvery: 3, scheduleAnchor: new Date('2026-06-01T00:00:00.000Z') };
+  const habit: StreakHabit = { ...dailyHabit, scheduleKind: 'interval', scheduleEvery: 3, scheduleAnchor: new Date('2026-06-01T00:00:00.000Z') };
   it('counts consecutive anchor-aligned days', () => {
     // Due days: 6/13, 6/10, 6/7, 6/4, 6/1 (today 6/14 is not aligned -> ignored).
     const entries = [done('2026-06-13'), done('2026-06-10'), done('2026-06-07')];
@@ -67,7 +69,7 @@ describe('computeStreak — interval', () => {
 });
 
 describe('computeStreak — weekly_count', () => {
-  const habit: HabitScheduleFields = { ...dailyHabit, scheduleKind: 'weekly_count', scheduleTarget: 3 };
+  const habit: StreakHabit = { ...dailyHabit, scheduleKind: 'weekly_count', scheduleTarget: 3 };
 
   it('reports streak in weeks', () => {
     assert.equal(computeStreak(habit, [], today, since).streakUnit, 'weeks');
@@ -92,5 +94,31 @@ describe('computeStreak — weekly_count', () => {
       done('2026-06-01'), // prev week: 1 (< 3)
     ];
     assert.equal(computeStreak(habit, entries, today, since).streak, 1);
+  });
+});
+
+describe('computeStreak — numeric goal', () => {
+  // "8000 steps", daily, counts a day only when the value clears the target.
+  const stepsHabit: StreakHabit = { ...dailyHabit, type: 'integer', goalTarget: 8000, goalDirection: 'at_least' };
+  function logged(date: string, num: number): StreakEntry {
+    return { entryDate: new Date(`${date}T00:00:00.000Z`), valueBool: null, valueNum: num, valueText: null, valueTime: null };
+  }
+
+  it('counts only days that met the target', () => {
+    const entries = [logged('2026-06-13', 8200), logged('2026-06-12', 9000)];
+    assert.equal(computeStreak(stepsHabit, entries, today, since).streak, 2);
+  });
+
+  it('a logged-but-short day breaks the streak', () => {
+    // 6/13 fell short (4000 < 8000), so the streak ends before it.
+    const entries = [logged('2026-06-13', 4000), logged('2026-06-12', 9000)];
+    assert.equal(computeStreak(stepsHabit, entries, today, since).streak, 0);
+  });
+
+  it('an at_most goal counts days at or below the target', () => {
+    // "<= 2 coffees", daily.
+    const coffee: StreakHabit = { ...dailyHabit, type: 'integer', goalTarget: 2, goalDirection: 'at_most' };
+    const entries = [logged('2026-06-13', 1), logged('2026-06-12', 3)]; // 6/12 over the limit
+    assert.equal(computeStreak(coffee, entries, today, since).streak, 1);
   });
 });

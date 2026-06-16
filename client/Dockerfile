@@ -1,3 +1,12 @@
+# --- dev: hot-reload target used by docker-compose.override.yml ---
+# Source + deps are bind-mounted from the host at runtime (see the override);
+# the compose command runs install + the Vite dev server.
+FROM node:20-alpine AS dev
+WORKDIR /app
+EXPOSE 5173
+CMD ["npm", "run", "dev"]
+
+# --- prod build (default build target) ---
 FROM node:20-alpine AS build
 
 WORKDIR /app

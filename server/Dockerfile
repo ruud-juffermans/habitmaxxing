@@ -1,4 +1,16 @@
-FROM node:20-alpine
+# --- dev: hot-reload target used by docker-compose.override.yml ---
+# Deps + source are bind-mounted from the host at runtime (see the override),
+# so this stage stays minimal; the compose command runs install + migrate +
+# seed + watch.
+FROM node:20-alpine AS dev
+WORKDIR /app
+RUN apk add --no-cache openssl
+ENV NODE_ENV=development
+EXPOSE 3001
+CMD ["npm", "run", "dev"]
+
+# --- prod (default build target) ---
+FROM node:20-alpine AS prod
 
 WORKDIR /app
 

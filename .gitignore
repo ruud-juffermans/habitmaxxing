@@ -3,6 +3,7 @@ dist/
 build/
 .env
 .env.local
+docker-compose.override.yml
 .DS_Store
 *.log
 client/node_modules/

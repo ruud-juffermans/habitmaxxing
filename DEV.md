@@ -115,34 +115,18 @@ The DB is exposed on `localhost:5432` (`postgres` / `devpassword`, database
 files (e.g. `POSTGRES_PASSWORD=...`, `SEED_USER_EMAIL=...`).
 
 
-## 1. Database (infra Postgres)
+## 1. Database
 
-The database runs as the shared infra Postgres. Two local-only files make it
-reachable from the host (both gitignored, not used on the VPS):
-
-- `ruudjuffermans-infra/.env`
-  ```
-  POSTGRES_USER=postgres
-  POSTGRES_PASSWORD=devpassword
-  ```
-- `ruudjuffermans-infra/docker-compose.override.yml` — publishes the DB port to
-  the host:
-  ```yaml
-  services:
-    db:
-      ports:
-        - "127.0.0.1:5432:5432"
-  ```
-
-Bring it up (from the infra repo):
+Prefer running the server and client directly on the host (`npm run dev`)? Bring
+up just the bundled dev Postgres from this repo — it's defined in the gitignored
+`docker-compose.override.yml` and auto-merged onto `docker-compose.yml`:
 
 ```bash
-cd ../ruudjuffermans-infra
 docker compose up -d db
 ```
 
-This creates the `habitmaxxing` and `ruudjuffermans` databases automatically
-(via `db/init/`) on first boot. Verify:
+It listens on `localhost:5432` (`postgres` / `devpassword`, database
+`habitmaxxing`) and persists in the `habitmaxxing_dev_db` volume. Verify:
 
 ```bash
 docker compose exec db psql -U postgres -c "\l"

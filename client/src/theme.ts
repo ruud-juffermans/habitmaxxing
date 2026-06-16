@@ -28,6 +28,10 @@ const sharedTokens = {
     medium: 500,
     bold: 700,
   },
+  fonts: {
+    heading: "'Bricolage Grotesque Variable', Georgia, serif",
+    body: "'Outfit Variable', 'Segoe UI', Roboto, sans-serif",
+  },
   breakpoints: {
     sm: '640px',
     md: '768px',
@@ -36,13 +40,13 @@ const sharedTokens = {
 };
 
 const lightColors = {
-  background: '#f6f7f9',
-  surface: '#ffffff',
-  surfaceAlt: '#eef0f3',
-  border: '#d9dde2',
-  text: '#13151a',
-  textMuted: '#5a6270',
-  primary: '#3357ff',
+  background: '#ffffff',
+  surface: '#f7f8fa',
+  surfaceAlt: '#f1f5f9',
+  border: '#e2e8f0',
+  text: '#0f172a',
+  textMuted: '#64748b',
+  primary: '#dd2e5a',
   primaryText: '#ffffff',
   success: '#2fa36a',
   danger: '#d64545',
@@ -50,13 +54,13 @@ const lightColors = {
 };
 
 const darkColors = {
-  background: '#0f1115',
-  surface: '#1a1d24',
-  surfaceAlt: '#23272f',
-  border: '#2e333c',
-  text: '#f2f4f7',
-  textMuted: '#9aa1ad',
-  primary: '#6b8bff',
+  background: '#0a0f1c',
+  surface: '#121826',
+  surfaceAlt: '#1a2032',
+  border: '#2a3244',
+  text: '#f4f7fb',
+  textMuted: '#cbd5e1',
+  primary: '#dd2e5a',
   primaryText: '#ffffff',
   success: '#4ed08c',
   danger: '#ef6a6a',
@@ -70,6 +74,7 @@ export interface AppTheme {
   radii: typeof sharedTokens.radii;
   fontSizes: typeof sharedTokens.fontSizes;
   fontWeights: typeof sharedTokens.fontWeights;
+  fonts: typeof sharedTokens.fonts;
   breakpoints: typeof sharedTokens.breakpoints;
 }
 

@@ -26,6 +26,49 @@ function readInitialTheme(): ThemeMode {
   return v === 'light' ? 'light' : 'dark';
 }
 
+// Outlined sun/moon glyphs for the theme toggle, matching the outlined look of
+// the MUI icons used on ruudjuffermans.nl. The icon shown is the mode you'll
+// switch *to*: a moon in light mode, a sun in dark mode.
+function MoonIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
 export function App() {
   const [mode, setMode] = useState<ThemeMode>(readInitialTheme);
   const { user, loading } = useAuth();
@@ -78,46 +121,50 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
 
   return (
     <Shell>
+      <HeaderGroup>
       <Nav>
-        <Hamburger
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-        >
-          <span />
-          <span />
-          <span />
-        </Hamburger>
-        <Brand>habitmaxxing</Brand>
-        <NavLinks $open={menuOpen}>
-          <DrawerHeader>
-            <Brand>habitmaxxing</Brand>
-            <CloseButton onClick={closeMenu} aria-label="Close menu">
-              &times;
-            </CloseButton>
-          </DrawerHeader>
-          <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
-          <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
-          <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
-          <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
-          <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
-          <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
-          <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
-          {user?.role === 'admin' && (
-            <StyledNavLink to="/admin" onClick={closeMenu}>Admin</StyledNavLink>
-          )}
-        </NavLinks>
-        <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
-        <UserArea>
-          <UserEmail title={user?.email}>{user?.name || user?.email}</UserEmail>
-          <ThemeToggle
-            onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
-            aria-label="Toggle theme"
+        <NavInner>
+          <Hamburger
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
           >
-            {mode === 'light' ? 'Dark' : 'Light'}
-          </ThemeToggle>
-          <SignOut onClick={() => logout()}>Sign out</SignOut>
-        </UserArea>
+            <span />
+            <span />
+            <span />
+          </Hamburger>
+          <Brand>habitmaxxing</Brand>
+          <NavLinks $open={menuOpen}>
+            <DrawerHeader>
+              <Brand>habitmaxxing</Brand>
+              <CloseButton onClick={closeMenu} aria-label="Close menu">
+                &times;
+              </CloseButton>
+            </DrawerHeader>
+            <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
+            <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
+            <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
+            <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
+            <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
+            <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
+            <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
+            {user?.role === 'admin' && (
+              <StyledNavLink to="/admin" onClick={closeMenu}>Admin</StyledNavLink>
+            )}
+          </NavLinks>
+          <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
+          <UserArea>
+            <UserEmail title={user?.email}>{user?.name || user?.email}</UserEmail>
+            <ThemeToggle
+              onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
+              aria-label={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              title={mode === 'light' ? 'Dark' : 'Light'}
+            >
+              {mode === 'light' ? <MoonIcon /> : <SunIcon />}
+            </ThemeToggle>
+            <SignOut onClick={() => logout()}>Sign out</SignOut>
+          </UserArea>
+        </NavInner>
       </Nav>
       {user?.isGuest && (
         <GuestBanner>
@@ -125,6 +172,7 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
           <Link to="/settings">Create an account →</Link>
         </GuestBanner>
       )}
+      </HeaderGroup>
       <Main>
         <Routes>
           <Route path="/" element={<Navigate to="/today" replace />} />
@@ -165,23 +213,47 @@ const Shell = styled.div`
   flex-direction: column;
 `;
 
+// Sticky group that keeps the header and the guest banner pinned together so
+// the banner always stays directly under the header on scroll.
+const HeaderGroup = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 40;
+`;
+
+// Translucent, blurred bar with a bottom border — mirrors the
+// ruudjuffermans.nl AppBar treatment.
 const Nav = styled.nav`
+  background: color-mix(in srgb, ${({ theme }) => theme.colors.background} 82%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+`;
+
+// Centered content container at the ruudjuffermans.nl width (MUI Container "lg").
+const NavInner = styled.div`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.space.lg};
-  padding: ${({ theme }) => theme.space.md} ${({ theme }) => theme.space.xl};
-  background: ${({ theme }) => theme.colors.surface};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  min-height: 64px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.xl};
 
   @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    min-height: 56px;
     gap: ${({ theme }) => theme.space.sm};
-    padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
+    padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
   }
 `;
 
 const Brand = styled.div`
+  font-family: ${({ theme }) => theme.fonts.heading};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  font-size: ${({ theme }) => theme.fontSizes.lg};
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 const Hamburger = styled.button`
@@ -204,7 +276,7 @@ const Hamburger = styled.button`
     border-radius: 2px;
   }
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: flex;
   }
 `;
@@ -212,7 +284,7 @@ const Hamburger = styled.button`
 const Overlay = styled.div<{ $open: boolean }>`
   display: none;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: block;
     position: fixed;
     inset: 0;
@@ -229,7 +301,7 @@ const NavLinks = styled.div<{ $open: boolean }>`
   gap: ${({ theme }) => theme.space.md};
   flex: 1;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     position: fixed;
     top: 0;
     left: 0;
@@ -252,7 +324,7 @@ const NavLinks = styled.div<{ $open: boolean }>`
 const DrawerHeader = styled.div`
   display: none;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -273,19 +345,44 @@ const CloseButton = styled.button`
 `;
 
 const StyledNavLink = styled(NavLink)`
+  position: relative;
   padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
-  border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.colors.textMuted};
+  font-size: 0.95rem;
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: color 0.2s;
 
   &.active {
-    color: ${({ theme }) => theme.colors.text};
-    background: ${({ theme }) => theme.colors.surfaceAlt};
+    color: ${({ theme }) => theme.colors.primary};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
   }
 
-  &:hover { text-decoration: none; color: ${({ theme }) => theme.colors.text}; }
+  /* Red underline indicator under the active link (desktop). */
+  &.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+    background: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:hover { text-decoration: none; color: ${({ theme }) => theme.colors.primary}; }
+
+  /* In the mobile drawer the links stack vertically, so swap the underline for
+     a subtle background highlight on the active item. */
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
+    border-radius: ${({ theme }) => theme.radii.md};
+
+    &.active::after { display: none; }
+    &.active { background: ${({ theme }) => theme.colors.surfaceAlt}; }
+  }
 `;
 
 const UserArea = styled.div`
@@ -293,7 +390,7 @@ const UserArea = styled.div`
   align-items: center;
   gap: ${({ theme }) => theme.space.sm};
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     margin-left: auto;
   }
 `;
@@ -306,32 +403,61 @@ const UserEmail = styled.span`
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: none;
   }
 `;
 
+// Circular icon toggle mirroring the ruudjuffermans.nl ThemeSwitcher: a small
+// bordered button whose sun/moon icon tilts on hover.
 const ThemeToggle = styled.button`
-  padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => theme.colors.surfaceAlt};
-  color: ${({ theme }) => theme.colors.text};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
-  cursor: pointer;
-
-  &:hover { background: ${({ theme }) => theme.colors.border}; }
-`;
-
-const SignOut = styled.button`
-  padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   background: transparent;
   color: ${({ theme }) => theme.colors.textMuted};
   border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s cubic-bezier(0.2, 0.65, 0.25, 1);
+  }
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text};
+    border-color: ${({ theme }) => theme.colors.textMuted};
+    background: ${({ theme }) => theme.colors.surfaceAlt};
+  }
+
+  &:hover svg {
+    transform: rotate(-12deg);
+  }
+`;
+
+// Contained red CTA, mirroring the ruudjuffermans.nl header's primary button.
+const SignOut = styled.button`
+  padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.lg};
+  background: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.primaryText};
+  border: none;
   border-radius: ${({ theme }) => theme.radii.md};
+  font-weight: ${({ theme }) => theme.fontWeights.bold};
   cursor: pointer;
   white-space: nowrap;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
 
-  &:hover { color: ${({ theme }) => theme.colors.text}; background: ${({ theme }) => theme.colors.surfaceAlt}; }
+  &:hover {
+    background: #b8244c;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(221, 46, 90, 0.24);
+  }
 `;
 
 const GuestBanner = styled.div`
@@ -354,7 +480,7 @@ const GuestBanner = styled.div`
 const Main = styled.main`
   flex: 1;
   padding: ${({ theme }) => theme.space.xl};
-  max-width: 1400px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
 

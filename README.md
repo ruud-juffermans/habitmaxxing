@@ -158,9 +158,11 @@ All ports bind to `127.0.0.1` only.
 │       ├── schema.prisma
 │       ├── migrations/
 │       └── seed.ts
-├── docker-compose.yml
-├── .env.example
-└── prd.md               # Product spec
+├── docker-compose.yml       # Production stack
+├── docker-compose.dev.yml   # Local dev stack (hot reload)
+├── .env.example             # Root env template (copy to .env)
+├── DEV.md                   # Development workflow
+└── prd.md                   # Product spec
 ```
 
 ## Development

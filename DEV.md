@@ -6,11 +6,93 @@
 
 ## Quick start (Docker — recommended)
 
-`docker-compose.dev.yml` is a self-contained dev stack: its own Postgres, plus
-the server and client with hot reload. No infra repo, no manual env files.
+Dev runs as an auto-merged Compose **override**: the committed
+`docker-compose.yml` (production) plus a local, gitignored
+`docker-compose.override.yml` that adds a self-contained Postgres and flips the
+server/client to their hot-reload `dev` build targets. No infra repo, no manual
+env files.
+
+The override is gitignored (local-only, never used on the VPS). Create it once
+in the repo root:
+
+```yaml
+# docker-compose.override.yml
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-habitmaxxing}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - habitmaxxing_dev_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-habitmaxxing}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+
+  server:
+    build:
+      target: dev
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-devpassword}@db:5432/${POSTGRES_DB:-habitmaxxing}?schema=public
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SEED_USER_EMAIL: ${SEED_USER_EMAIL:-demo@habitmaxxing.local}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:-password123}
+    command: >
+      sh -c "npm install &&
+             npx prisma generate &&
+             npx prisma migrate deploy &&
+             npx prisma db seed &&
+             npm run dev"
+    volumes:
+      - ./server:/app
+      - habitmaxxing_dev_server_modules:/app/node_modules
+    ports:
+      - "3001:3001"
+
+  client:
+    build:
+      target: dev
+    depends_on:
+      - server
+    environment:
+      VITE_APP_TZ: ${VITE_APP_TZ:-Europe/Amsterdam}
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./client:/app
+      - habitmaxxing_dev_client_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  habitmaxxing_dev_db:
+  habitmaxxing_dev_server_modules:
+  habitmaxxing_dev_client_modules:
+
+networks:
+  backend:
+    external: false
+  frontend:
+    external: false
+```
+
+Then bring the stack up — Compose merges both files automatically:
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+docker compose up --build
 ```
 
 First boot installs deps, runs migrations, and seeds the demo account (takes a
@@ -22,15 +104,15 @@ minute). Then open http://localhost:5173 and sign in with:
 Source is bind-mounted, so edits on the host reload live. Other commands:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d        # background
-docker compose -f docker-compose.dev.yml logs -f      # tail logs
-docker compose -f docker-compose.dev.yml down         # stop
-docker compose -f docker-compose.dev.yml down -v      # stop + wipe the DB
+docker compose up -d --build   # background
+docker compose logs -f         # tail logs
+docker compose down            # stop
+docker compose down -v         # stop + wipe the DB volume
 ```
 
 The DB is exposed on `localhost:5432` (`postgres` / `devpassword`, database
 `habitmaxxing`). Override any default by adding a `.env` next to the compose
-file (e.g. `POSTGRES_PASSWORD=...`, `SEED_USER_EMAIL=...`).
+files (e.g. `POSTGRES_PASSWORD=...`, `SEED_USER_EMAIL=...`).
 
 
 ## 1. Database (infra Postgres)

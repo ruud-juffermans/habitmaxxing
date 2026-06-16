@@ -14,7 +14,7 @@ import { GoalEditor, goalOf, goalSummary, type HabitGoal } from '../components/G
 import { AccountSection } from './AccountSection';
 
 const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
-const DEFAULT_COLOR = '#3357ff';
+const DEFAULT_COLOR = '#dd2e5a';
 
 // Pull just the schedule fields out of a habit row.
 function scheduleOf(h: Habit): HabitSchedule {

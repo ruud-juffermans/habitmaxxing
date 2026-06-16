@@ -68,38 +68,25 @@ docker compose exec db psql -U postgres -c "\l"
 
 ## 2. Server
 
-Create `server/.env` (gitignored):
-
-```
-DATABASE_URL=postgresql://postgres:devpassword@localhost:5432/habitmaxxing?schema=public
-NODE_ENV=development
-SERVER_PORT=3001
-APP_TZ=Europe/Amsterdam
-APP_URL=http://localhost:5173
-CORS_ORIGIN=http://localhost:5173
-SESSION_COOKIE_NAME=habitmaxxing_session
-COOKIE_SAMESITE=lax
-COOKIE_SECURE=false
-BCRYPT_ROUNDS=12
-SMTP_HOST=                       # empty: verification/reset emails print to console
-SEED_USER_EMAIL=demo@habitmaxxing.local
-SEED_USER_PASSWORD=password123
-```
-
-Apply migrations and seed the demo data (the Prisma CLI auto-loads `.env`):
+All configuration lives in the root `.env` (gitignored — copy it from
+`.env.example`):
 
 ```bash
+cp .env.example .env     # then set DATABASE_URL to ...@localhost:5432/... for host-runs
+```
+
+The app does **not** load `dotenv` (in production env comes from Docker), and the
+Prisma CLI run from `server/` won't see the root file, so export it into the
+shell first, then run everything from there:
+
+```bash
+set -a && . ./.env && set +a     # export the root .env
+
 cd server
 npm install
 npx prisma migrate deploy
 npx prisma db seed
-```
-
-Start the server. **Note:** the app does not load `dotenv` (in production env
-comes from Docker), so export `.env` into the environment first:
-
-```bash
-set -a && . ./.env && set +a && npm run dev
+npm run dev
 ```
 
 Server listens on http://localhost:3001 (routes are under `/api/...`).

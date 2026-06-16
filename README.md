@@ -88,9 +88,15 @@ That's it — Node and Postgres are not required on the host.
 ## Quick start
 
 ```bash
-cp .env.example .env
-docker compose up -d
+./setup-dev.sh                 # generate the local-dev files (see below)
+docker compose up -d --build
 ```
+
+`setup-dev.sh` writes the two gitignored local-dev files: `.env` (from
+`.env.example`) and `docker-compose.override.yml` — a self-contained dev stack
+with its own Postgres and hot-reload `dev` build targets that Compose
+auto-merges onto `docker-compose.yml`. No infra repo required. Re-run with
+`--force` to regenerate them.
 
 Open <http://localhost:5173>.
 
@@ -158,16 +164,17 @@ All ports bind to `127.0.0.1` only.
 │       ├── schema.prisma
 │       ├── migrations/
 │       └── seed.ts
-├── docker-compose.yml       # Production stack
-├── docker-compose.dev.yml   # Local dev stack (hot reload)
-├── .env.example             # Root env template (copy to .env)
-├── DEV.md                   # Development workflow
+├── docker-compose.yml       # Production stack (joins the infra networks)
+├── setup-dev.sh             # Generates the local .env + docker-compose.override.yml
+├── .env.example             # Root env template
 └── prd.md                   # Product spec
 ```
 
 ## Development
 
-The compose file mounts `client/src` and `server/src` into the containers, so file edits hot-reload automatically (Vite HMR for the client, `tsx watch` for the server).
+Local dev uses a Compose **override**: `./setup-dev.sh` generates a gitignored `docker-compose.override.yml` that Compose auto-merges onto the production `docker-compose.yml`, adding a self-contained Postgres and switching the server/client to their hot-reload `dev` build targets — no infra repo required. The override mounts `client` and `server` into the containers, so file edits hot-reload automatically (Vite HMR for the client, `tsx watch` for the server).
+
+> The production `docker-compose.yml` alone joins the external infra networks and publishes no host ports. Locally, the override is auto-merged — to run the pure production stack without it, pass the base file explicitly: `docker compose -f docker-compose.yml up --build`.
 
 ### Running outside Docker
 

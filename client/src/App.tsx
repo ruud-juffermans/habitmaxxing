@@ -119,6 +119,17 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
 
+  const navItems = [
+    { to: '/today', label: 'Today' },
+    { to: '/history', label: 'History' },
+    { to: '/stats', label: 'Stats' },
+    { to: '/week', label: 'Week' },
+    { to: '/month', label: 'Month' },
+    { to: '/all-time', label: 'All time' },
+    { to: '/settings', label: 'Settings' },
+    ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin' }] : []),
+  ];
+
   return (
     <Shell>
       <HeaderGroup>
@@ -134,25 +145,11 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
             <span />
           </Hamburger>
           <Brand>habitmaxxing</Brand>
-          <NavLinks $open={menuOpen}>
-            <DrawerHeader>
-              <Brand>habitmaxxing</Brand>
-              <CloseButton onClick={closeMenu} aria-label="Close menu">
-                &times;
-              </CloseButton>
-            </DrawerHeader>
-            <StyledNavLink to="/today" onClick={closeMenu}>Today</StyledNavLink>
-            <StyledNavLink to="/history" onClick={closeMenu}>History</StyledNavLink>
-            <StyledNavLink to="/stats" onClick={closeMenu}>Stats</StyledNavLink>
-            <StyledNavLink to="/week" onClick={closeMenu}>Week</StyledNavLink>
-            <StyledNavLink to="/month" onClick={closeMenu}>Month</StyledNavLink>
-            <StyledNavLink to="/all-time" onClick={closeMenu}>All time</StyledNavLink>
-            <StyledNavLink to="/settings" onClick={closeMenu}>Settings</StyledNavLink>
-            {user?.role === 'admin' && (
-              <StyledNavLink to="/admin" onClick={closeMenu}>Admin</StyledNavLink>
-            )}
-          </NavLinks>
-          <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
+          <DesktopLinks>
+            {navItems.map((item) => (
+              <StyledNavLink key={item.to} to={item.to}>{item.label}</StyledNavLink>
+            ))}
+          </DesktopLinks>
           <UserArea>
             <UserEmail title={user?.email}>{user?.name || user?.email}</UserEmail>
             <ThemeToggle
@@ -173,6 +170,21 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
         </GuestBanner>
       )}
       </HeaderGroup>
+      {/* Mobile drawer + overlay live OUTSIDE the blurred <Nav>: backdrop-filter
+          would otherwise make Nav the containing block for these fixed elements,
+          trapping them inside the header bar and behind the page content. */}
+      <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
+      <Drawer $open={menuOpen}>
+        <DrawerHeader>
+          <Brand>habitmaxxing</Brand>
+          <CloseButton onClick={closeMenu} aria-label="Close menu">
+            &times;
+          </CloseButton>
+        </DrawerHeader>
+        {navItems.map((item) => (
+          <StyledNavLink key={item.to} to={item.to} onClick={closeMenu}>{item.label}</StyledNavLink>
+        ))}
+      </Drawer>
       <Main>
         <Routes>
           <Route path="/" element={<Navigate to="/today" replace />} />
@@ -288,7 +300,7 @@ const Overlay = styled.div<{ $open: boolean }>`
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 20;
+    z-index: 50;
     background: rgba(0, 0, 0, 0.45);
     opacity: ${({ $open }) => ($open ? 1 : 0)};
     pointer-events: ${({ $open }) => ($open ? 'auto' : 'none')};
@@ -296,18 +308,30 @@ const Overlay = styled.div<{ $open: boolean }>`
   }
 `;
 
-const NavLinks = styled.div<{ $open: boolean }>`
+// Desktop: inline horizontal links inside the header. Hidden on mobile, where
+// the <Drawer> below takes over.
+const DesktopLinks = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.space.md};
   flex: 1;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
+    display: none;
+  }
+`;
+
+// Mobile slide-in drawer. Rendered outside the blurred <Nav> so its fixed
+// positioning is relative to the viewport (z-index above the sticky header).
+const Drawer = styled.div<{ $open: boolean }>`
+  display: none;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 30;
-    flex: none;
+    z-index: 60;
+    display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.space.xs};
     width: 78%;

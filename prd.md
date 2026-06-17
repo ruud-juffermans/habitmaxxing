@@ -177,8 +177,8 @@ The application is started and stopped exclusively via Docker Compose.
 | Service  | Image / Build           | Port (host → container) | Notes                                    |
 |----------|-------------------------|-------------------------|------------------------------------------|
 | `db`     | `postgres:16-alpine`    | `127.0.0.1:5432 → 5432` | Named volume `habitmaxxing_pgdata`        |
-| `server` | build `./server`        | `127.0.0.1:3001 → 3001` | Waits for `db` healthcheck; runs migrations on start |
-| `client` | build `./client`        | `127.0.0.1:5173 → 5173` | Vite dev server in dev, nginx static in prod profile |
+| `server` | build `./server`        | `127.0.0.1:4000 → 4000` | Waits for `db` healthcheck; runs migrations on start |
+| `client` | build `./client`        | `127.0.0.1:3000 → 3000` | Vite dev server in dev, nginx static in prod profile |
 
 ### Commands
 
@@ -194,7 +194,7 @@ docker compose logs -f      # tail logs
 - A single root `docker-compose.yml` orchestrates all three services.
 - `db` defines a healthcheck (`pg_isready`) so `server` can `depends_on` it with `condition: service_healthy`.
 - Backend reads `DATABASE_URL` from env; compose injects it pointing at the `db` service hostname.
-- Frontend reads `VITE_API_URL` from env (defaults to `http://localhost:3001`).
+- Frontend reads `VITE_API_URL` from env (defaults to `http://localhost:4000`).
 - `.env.example` is committed; `.env` is gitignored.
 - Source folders are bind-mounted in dev so edits hot-reload without rebuilds.
 

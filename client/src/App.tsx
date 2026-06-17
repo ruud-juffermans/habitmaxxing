@@ -152,13 +152,13 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
           </DesktopLinks>
           <UserArea>
             <UserEmail title={user?.email}>{user?.name || user?.email}</UserEmail>
-            <ThemeToggle
+            <DesktopThemeToggle
               onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
               aria-label={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
               title={mode === 'light' ? 'Dark' : 'Light'}
             >
               {mode === 'light' ? <MoonIcon /> : <SunIcon />}
-            </ThemeToggle>
+            </DesktopThemeToggle>
             <SignOut onClick={() => logout()}>Sign out</SignOut>
           </UserArea>
         </NavInner>
@@ -176,14 +176,25 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
       <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
       <Drawer $open={menuOpen}>
         <DrawerHeader>
-          <Brand>habitmaxxing</Brand>
           <CloseButton onClick={closeMenu} aria-label="Close menu">
             &times;
           </CloseButton>
         </DrawerHeader>
-        {navItems.map((item) => (
-          <StyledNavLink key={item.to} to={item.to} onClick={closeMenu}>{item.label}</StyledNavLink>
-        ))}
+        <DrawerLinks>
+          {navItems.map((item) => (
+            <StyledNavLink key={item.to} to={item.to} onClick={closeMenu}>{item.label}</StyledNavLink>
+          ))}
+        </DrawerLinks>
+        <DrawerDivider />
+        <DrawerFooter>
+          <ThemeToggle
+            onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
+            aria-label={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            title={mode === 'light' ? 'Dark' : 'Light'}
+          >
+            {mode === 'light' ? <MoonIcon /> : <SunIcon />}
+          </ThemeToggle>
+        </DrawerFooter>
       </Drawer>
       <Main>
         <Routes>
@@ -345,17 +356,43 @@ const Drawer = styled.div<{ $open: boolean }>`
   }
 `;
 
+// Close-button row at the top of the drawer — mirrors the ruudjuffermans.nl
+// drawer, which opens with a single close icon aligned to the end.
 const DrawerHeader = styled.div`
   display: none;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: ${({ theme }) => theme.space.sm};
-    padding-bottom: ${({ theme }) => theme.space.sm};
-    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+    justify-content: flex-end;
+    margin-bottom: ${({ theme }) => theme.space.xs};
   }
+`;
+
+// Vertical stack of nav links in the drawer body.
+const DrawerLinks = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.space.xs};
+`;
+
+// Separator between the nav links and the theme toggle, matching the ruud
+// drawer's <Divider> above its switcher row.
+const DrawerDivider = styled.hr`
+  width: 100%;
+  height: 1px;
+  border: none;
+  margin: ${({ theme }) => theme.space.sm} 0;
+  background: ${({ theme }) => theme.colors.border};
+`;
+
+// Footer row holding the theme toggle, centered like the ruud drawer's
+// switcher row.
+const DrawerFooter = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: ${({ theme }) => theme.space.md};
+  padding: ${({ theme }) => theme.space.sm} 0;
 `;
 
 const CloseButton = styled.button`
@@ -403,9 +440,13 @@ const StyledNavLink = styled(NavLink)`
      a subtle background highlight on the active item. */
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     border-radius: ${({ theme }) => theme.radii.md};
+    padding: ${({ theme }) => theme.space.md} ${({ theme }) => theme.space.lg};
 
     &.active::after { display: none; }
-    &.active { background: ${({ theme }) => theme.colors.surfaceAlt}; }
+    &.active {
+      background: color-mix(in srgb, ${({ theme }) => theme.colors.primary} 12%, transparent);
+      color: ${({ theme }) => theme.colors.primary};
+    }
   }
 `;
 
@@ -462,6 +503,14 @@ const ThemeToggle = styled.button`
 
   &:hover svg {
     transform: rotate(-12deg);
+  }
+`;
+
+// The header copy of the theme toggle is desktop-only; on mobile the toggle
+// lives inside the drawer (mirroring ruudjuffermans.nl).
+const DesktopThemeToggle = styled(ThemeToggle)`
+  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
+    display: none;
   }
 `;
 

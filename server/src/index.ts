@@ -17,7 +17,7 @@ const app = express();
 // Credentialed CORS: the browser must send the session cookie, which requires an
 // explicit origin (not "*"). Configure allowed origins via CORS_ORIGIN (comma
 // separated); defaults to the local Vite dev server.
-const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
@@ -60,7 +60,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ error: message });
 });
 
-const port = Number(process.env.SERVER_PORT ?? 3001);
+const port = Number(process.env.SERVER_PORT ?? 4000);
 // Reconcile the configured admin account, then start accepting requests. A
 // bootstrap failure is logged but never blocks the server from coming up.
 bootstrapAdmin()

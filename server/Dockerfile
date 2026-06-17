@@ -6,7 +6,7 @@ FROM node:20-alpine AS dev
 WORKDIR /app
 RUN apk add --no-cache openssl
 ENV NODE_ENV=development
-EXPOSE 3001
+EXPOSE 4000
 CMD ["npm", "run", "dev"]
 
 # --- prod (default build target) ---
@@ -29,7 +29,7 @@ RUN npx prisma generate
 RUN npm run build
 
 ENV NODE_ENV=production
-EXPOSE 3001
+EXPOSE 4000
 
 # migrate + seed + start is orchestrated from docker-compose `command`.
 CMD ["npm", "start"]

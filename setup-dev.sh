@@ -56,11 +56,11 @@ if should_write "docker-compose.override.yml"; then
 #
 # It flips the server/client to their `dev` build targets (hot reload via
 # bind-mounted source), adds a self-contained Postgres so no infra repo is
-# required, makes the backend/frontend networks local instead of external, and
-# publishes the dev ports:
+# required, makes the backend/dokploy-network networks local instead of external,
+# and publishes the dev ports:
 #
-#   Client:  http://localhost:5173   (log in with the seeded demo account below)
-#   Server:  http://localhost:3001   (API under /api/...)
+#   Client:  http://localhost:3000   (log in with the seeded demo account below)
+#   Server:  http://localhost:4000   (API under /api/...)
 #   DB:      localhost:5432          (postgres / devpassword)
 #
 # Overridable defaults use ${VAR:-default}; set them in a `.env` next to this
@@ -93,8 +93,8 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-devpassword}@db:5432/${POSTGRES_DB:-habitmaxxing}?schema=public
-      APP_URL: ${APP_URL:-http://localhost:5173}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       # Empty SMTP_HOST => verification/reset emails print to the server console.
       SMTP_HOST: ${SMTP_HOST:-}
@@ -114,7 +114,7 @@ services:
       # container's Linux build.
       - habitmaxxing_dev_server_modules:/app/node_modules
     ports:
-      - "3001:3001"
+      - "4000:4000"
 
   client:
     build:
@@ -130,7 +130,7 @@ services:
       - ./client:/app
       - habitmaxxing_dev_client_modules:/app/node_modules
     ports:
-      - "5173:5173"
+      - "3000:3000"
 
 volumes:
   habitmaxxing_dev_db:
@@ -138,11 +138,11 @@ volumes:
   habitmaxxing_dev_client_modules:
 
 networks:
-  # Local dev creates its own networks instead of joining the infra stack's
-  # external ones (overrides external: true from docker-compose.yml).
+  # Local dev creates its own networks instead of joining the shared/Dokploy
+  # ones (overrides external: true from docker-compose.yml).
   backend:
     external: false
-  frontend:
+  dokploy-network:
     external: false
 OVERRIDE_EOF
   echo "created: docker-compose.override.yml"
@@ -151,5 +151,5 @@ fi
 echo
 echo "Done. Start the dev stack with:"
 echo "  docker compose up --build"
-echo "    client -> http://localhost:5173   (demo@habitmaxxing.local / password123)"
-echo "    server -> http://localhost:3001"
+echo "    client -> http://localhost:3000   (demo@habitmaxxing.local / password123)"
+echo "    server -> http://localhost:4000"

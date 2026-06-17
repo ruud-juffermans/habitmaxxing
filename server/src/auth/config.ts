@@ -26,7 +26,7 @@ export const authConfig = {
   // Force the Secure flag regardless of NODE_ENV (needed when SameSite=None).
   cookieSecure: process.env.COOKIE_SECURE === 'true',
   // Base URL of the frontend, used to build links in emails.
-  appUrl: (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  appUrl: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
   // The single account promoted to admin on startup (see bootstrapAdmin). Unset
   // means no admin is provisioned automatically.
   adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || null,

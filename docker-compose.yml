@@ -6,7 +6,7 @@ services:
       NODE_ENV: production
       # Shared Postgres instance (provisioned by ruudjuffermans-infra), own database.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/habitmaxxing?schema=public
-      SERVER_PORT: 3001
+      SERVER_PORT: 4000
       APP_TZ: ${APP_TZ:-Europe/Amsterdam}
       APP_URL: ${APP_URL:-https://habit.ruudjuffermans.nl}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://habit.ruudjuffermans.nl}
@@ -29,10 +29,9 @@ services:
     # Run migrations + seed against the shared DB, then start the compiled server.
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm start"
     networks:
-      backend:
-        aliases: [habitmaxxing-server]
-      frontend:
-        aliases: [habitmaxxing-server]
+      # "backend" to reach the db; "dokploy-network" so Traefik can route /api/*.
+      - backend
+      - dokploy-network
 
   client:
     build:
@@ -42,12 +41,12 @@ services:
         VITE_APP_TZ: ${VITE_APP_TZ:-Europe/Amsterdam}
     restart: unless-stopped
     networks:
-      frontend:
-        aliases: [habitmaxxing-client]
+      - dokploy-network
 
 networks:
-  # Created by the ruudjuffermans-infra stack; bring that up first.
+  # Shared DB network created by the ruudjuffermans-infra stack; bring it up first.
   backend:
     external: true
-  frontend:
+  # Dokploy's proxy network; Traefik routes public traffic to services on it.
+  dokploy-network:
     external: true

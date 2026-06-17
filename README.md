@@ -81,7 +81,7 @@ Manage habits and groups: create, reorder, archive, and tweak units/min/max, sch
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
-- A free port for each service (defaults: `5173`, `3001`, `5432`)
+- A free port for each service (defaults: `3000`, `4000`, `5432`)
 
 That's it — Node and Postgres are not required on the host.
 
@@ -98,7 +98,7 @@ with its own Postgres and hot-reload `dev` build targets that Compose
 auto-merges onto `docker-compose.yml`. No infra repo required. Re-run with
 `--force` to regenerate them.
 
-Open <http://localhost:5173>.
+Open <http://localhost:3000>.
 
 The first boot runs Prisma migrations and seeds a starter set of habits owned by a ready-to-use demo account. Subsequent starts reuse the existing volume.
 
@@ -122,13 +122,13 @@ All configuration is environment-driven via `.env` (see [`.env.example`](./.env.
 | `POSTGRES_DB`       | `habitmaxxing`                                                          | DB name                              |
 | `POSTGRES_PORT`     | `5432`                                                                 | Host-side DB port                    |
 | `DATABASE_URL`      | `postgresql://habitmaxxing:habitmaxxing@db:5432/habitmaxxing?schema=public` | Server's connection string          |
-| `SERVER_PORT`       | `3001`                                                                 | Express API port                     |
-| `CLIENT_PORT`       | `5173`                                                                 | Vite dev server port                 |
-| `VITE_API_URL`      | `http://localhost:3001`                                                | API base URL the client targets      |
+| `SERVER_PORT`       | `4000`                                                                 | Express API port                     |
+| `CLIENT_PORT`       | `3000`                                                                 | Vite dev server port                 |
+| `VITE_API_URL`      | `http://localhost:4000`                                                | API base URL the client targets      |
 | `VITE_APP_TZ`       | `Europe/Amsterdam`                                                     | Timezone the client uses for "today"  |
 | `APP_TZ`            | `Europe/Amsterdam`                                                     | Timezone the server uses for stats day boundaries |
-| `APP_URL`           | `http://localhost:5173`                                                | Frontend URL used to build links in emails |
-| `CORS_ORIGIN`       | `http://localhost:5173`                                                | Allowed browser origin(s) for credentialed CORS (comma separated) |
+| `APP_URL`           | `http://localhost:3000`                                                | Frontend URL used to build links in emails |
+| `CORS_ORIGIN`       | `http://localhost:3000`                                                | Allowed browser origin(s) for credentialed CORS (comma separated) |
 | `SESSION_TTL_DAYS`  | `30`                                                                   | Session/cookie lifetime |
 | `EMAIL_VERIFICATION_TTL_HOURS` | `24`                                                        | Verification-link validity |
 | `PASSWORD_RESET_TTL_MINUTES` | `60`                                                          | Reset-link validity |
@@ -193,10 +193,10 @@ npm run dev
 # client (new terminal)
 cd client
 npm install
-VITE_API_URL=http://localhost:3001 VITE_APP_TZ=Europe/Amsterdam npm run dev
+VITE_API_URL=http://localhost:4000 VITE_APP_TZ=Europe/Amsterdam npm run dev
 ```
 
-> **Running the client outside Docker, you must pass `VITE_API_URL`** (and `VITE_APP_TZ`) — the Compose environment isn't loaded, so the client otherwise falls back to its own origin (`localhost:5173`), every API call fails, and **login silently does nothing** with no visible error.
+> **Running the client outside Docker, you must pass `VITE_API_URL`** (and `VITE_APP_TZ`) — the Compose environment isn't loaded, so the client otherwise falls back to its own origin (`localhost:3000`), every API call fails, and **login silently does nothing** with no visible error.
 
 ### Production build
 
@@ -229,7 +229,7 @@ npx prisma studio                        # browse data in the GUI
 
 ## API reference
 
-Base URL: `http://localhost:3001/api`
+Base URL: `http://localhost:4000/api`
 
 All `/api` routes except `/health` and `/auth/*` require an authenticated, email-verified session (sent via the `habitmaxxing_session` httpOnly cookie). Data routes only ever return the signed-in user's own records.
 

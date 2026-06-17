@@ -41,8 +41,10 @@ async function findTarget(id: string, res: import('express').Response) {
 }
 
 // Guard against an admin locking themselves out (suspend/delete/revoke self).
+// A service-token caller has no req.user — there's no "self" to protect, so the
+// guard simply doesn't apply.
 function blocksSelf(req: import('express').Request, res: import('express').Response, action: string): boolean {
-  if (req.params.id === req.user!.id) {
+  if (req.user && req.params.id === req.user.id) {
     res.status(400).json({ error: `You can't ${action} your own account.` });
     return true;
   }

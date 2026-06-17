@@ -9,7 +9,8 @@ import { entriesRouter } from './routes/entries.js';
 import { statsRouter } from './routes/stats.js';
 import { groupsRouter } from './routes/groups.js';
 import { adminRouter } from './routes/admin.js';
-import { requireAuth, requireAdmin } from './middleware/auth.js';
+import { requireAuth } from './middleware/auth.js';
+import { requireServiceOrAdmin } from './middleware/serviceAuth.js';
 import { bootstrapAdmin } from './auth/bootstrapAdmin.js';
 
 const app = express();
@@ -44,8 +45,9 @@ app.use('/api/habits', requireAuth, habitsRouter);
 app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/stats', requireAuth, statsRouter);
 
-// Admin-only user management.
-app.use('/api/admin', requireAuth, requireAdmin, adminRouter);
+// Admin-only user management. Accessible to a session admin user OR the central
+// admin app via a shared service token (X-Service-Token: ADMIN_SERVICE_TOKEN).
+app.use('/api/admin', requireServiceOrAdmin, adminRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof ZodError) {

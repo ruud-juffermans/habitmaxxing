@@ -34,8 +34,12 @@ services:
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm start"
     networks:
       # "backend" to reach the db; "dokploy-network" so Traefik can route /api/*.
-      - backend
-      - dokploy-network
+      backend: {}
+      # Stable alias so the central admin app can reach this server at a fixed
+      # name regardless of the container name Dokploy generates.
+      dokploy-network:
+        aliases:
+          - habitmaxxing-server
 
   client:
     build:

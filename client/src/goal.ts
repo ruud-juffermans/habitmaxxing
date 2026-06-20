@@ -10,9 +10,25 @@
 export type GoalDirection = 'at_least' | 'at_most';
 
 // Habit types that carry a numeric value a goal can be compared against.
-export type GoalHabitType = 'boolean' | 'integer' | 'decimal' | 'score' | 'time' | 'duration' | 'text';
+export type GoalHabitType =
+  | 'boolean'
+  | 'integer'
+  | 'decimal'
+  | 'score'
+  | 'time'
+  | 'duration'
+  | 'duration_hours'
+  | 'multi_boolean'
+  | 'text';
 
-const NUMERIC_TYPES = new Set<GoalHabitType>(['integer', 'decimal', 'score', 'duration']);
+const NUMERIC_TYPES = new Set<GoalHabitType>([
+  'integer',
+  'decimal',
+  'score',
+  'duration',
+  'duration_hours',
+  'multi_boolean',
+]);
 
 /** Does this habit type support a numeric goal target? */
 export function isGoalableType(type: GoalHabitType): boolean {
@@ -38,9 +54,9 @@ export interface GoalEntry {
  * Has the habit's goal been met by this entry — the real definition of "done"?
  *
  * - boolean: done when checked (a bare `false` does not count).
- * - numeric (integer/decimal/score/duration): with a goal, the value must clear
- *   the target (>= for `at_least`, <= for `at_most`); with no goal, any value
- *   counts, preserving the pre-goal behaviour.
+ * - numeric (integer/decimal/score/duration/duration_hours/multi_boolean): with a
+ *   goal, the value must clear the target (>= for `at_least`, <= for `at_most`);
+ *   with no goal, any value counts, preserving the pre-goal behaviour.
  * - time/text: no goal concept — done when a non-empty entry exists.
  */
 export function meetsGoal(habit: Goalable, entry: GoalEntry): boolean {

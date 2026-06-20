@@ -39,7 +39,7 @@ const defaultGroups: GroupSeed[] = [
 
 // Ordered as you'd log them through the day; sortOrder follows this array.
 const defaultHabits: HabitSeed[] = [
-  { name: 'Hours slept', type: 'decimal', unit: 'h', group: 'health' },
+  { name: 'Hours slept', type: 'duration_hours', unit: 'h', group: 'health' },
   { name: 'Workout completed', type: 'boolean', group: 'health', schedule: { kind: 'weekly_count', target: 3 } },
   { name: 'Water intake', type: 'decimal', unit: 'L', group: 'health' },
   { name: 'Glasses of water', type: 'multi_boolean', unit: 'glasses', group: 'health', goalTarget: 5, description: 'Tap + for each glass — aim for 5 a day' },

@@ -232,7 +232,14 @@ function scheduledTotal(habit: Habit, range: PeriodRange): number {
 }
 
 function isNumericType(t: HabitType): boolean {
-  return t === 'integer' || t === 'decimal' || t === 'score' || t === 'duration';
+  return (
+    t === 'integer' ||
+    t === 'decimal' ||
+    t === 'score' ||
+    t === 'duration' ||
+    t === 'duration_hours' ||
+    t === 'multi_boolean'
+  );
 }
 
 function formatNumber(v: number | null, type: HabitType): string {

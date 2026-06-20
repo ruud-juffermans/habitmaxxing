@@ -13,7 +13,23 @@ import {
 import { GoalEditor, goalOf, goalSummary, type HabitGoal } from '../components/GoalEditor';
 import { AccountSection } from './AccountSection';
 
-const TYPES: HabitType[] = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'];
+const TYPES: HabitType[] = [
+  'boolean',
+  'integer',
+  'decimal',
+  'score',
+  'time',
+  'duration',
+  'duration_hours',
+  'multi_boolean',
+  'text',
+];
+// Human labels for the enum values whose raw form reads awkwardly.
+const TYPE_LABELS: Partial<Record<HabitType, string>> = {
+  duration_hours: 'duration (hours)',
+  multi_boolean: 'multi-boolean',
+};
+const typeLabel = (t: HabitType) => TYPE_LABELS[t] ?? t;
 const DEFAULT_COLOR = '#dd2e5a';
 
 // Pull just the schedule fields out of a habit row.
@@ -278,7 +294,7 @@ export function Settings() {
           />
           <Select value={newType} onChange={(e) => setNewType(e.target.value as HabitType)}>
             {TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t} value={t}>{typeLabel(t)}</option>
             ))}
           </Select>
           <Select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)}>
@@ -409,7 +425,7 @@ export function Settings() {
                       value={h.type}
                       onChange={(e) => onUpdate(h.id, { type: e.target.value as HabitType })}
                     >
-                      {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      {TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                     </Select>
                   </Td>
                   <Td data-label="Group">

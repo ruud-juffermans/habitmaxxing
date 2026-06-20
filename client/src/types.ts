@@ -1,4 +1,13 @@
-export type HabitType = 'boolean' | 'integer' | 'decimal' | 'score' | 'time' | 'duration' | 'text';
+export type HabitType =
+  | 'boolean'
+  | 'integer'
+  | 'decimal'
+  | 'score'
+  | 'time'
+  | 'duration'
+  | 'duration_hours'
+  | 'multi_boolean'
+  | 'text';
 
 export type ScheduleKind = 'daily' | 'weekdays' | 'weekly_count' | 'interval';
 

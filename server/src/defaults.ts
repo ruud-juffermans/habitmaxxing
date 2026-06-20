@@ -21,6 +21,7 @@ interface HabitSeed {
   unit?: string;
   min?: number;
   max?: number;
+  goalTarget?: number; // numeric target that defines "done"; direction defaults to at_least
   schedule?: SeedSchedule;
 }
 
@@ -41,6 +42,8 @@ const defaultHabits: HabitSeed[] = [
   { name: 'Hours slept', type: 'decimal', unit: 'h', group: 'health' },
   { name: 'Workout completed', type: 'boolean', group: 'health', schedule: { kind: 'weekly_count', target: 3 } },
   { name: 'Water intake', type: 'decimal', unit: 'L', group: 'health' },
+  { name: 'Glasses of water', type: 'multi_boolean', unit: 'glasses', group: 'health', goalTarget: 5, description: 'Tap + for each glass — aim for 5 a day' },
+  { name: 'Deep work', type: 'duration_hours', unit: 'h', group: 'productivity', goalTarget: 2, description: 'Focused, distraction-free hours' },
   { name: 'Meditation', type: 'duration', unit: 'min', group: 'mind' },
   { name: '30 minutes reading', type: 'boolean', group: 'mind', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] } },
   { name: 'Mood', type: 'score', min: 1, max: 10, group: 'mind', description: 'Overall mood, 1–10' },
@@ -72,6 +75,7 @@ export async function provisionDefaults(userId: string): Promise<void> {
           unit: h.unit,
           min: h.min,
           max: h.max,
+          goalTarget: h.goalTarget,
           groupId,
           sortOrder,
           userId,

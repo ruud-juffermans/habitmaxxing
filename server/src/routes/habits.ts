@@ -5,7 +5,7 @@ import { asyncRoute } from '../http.js';
 
 export const habitsRouter = Router();
 
-const habitTypes = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'text'] as const;
+const habitTypes = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'duration_hours', 'multi_boolean', 'text'] as const;
 const scheduleKinds = ['daily', 'weekdays', 'weekly_count', 'interval'] as const;
 const goalDirections = ['at_least', 'at_most'] as const;
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');

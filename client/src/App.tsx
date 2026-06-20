@@ -540,7 +540,9 @@ const GuestBanner = styled.div`
   justify-content: center;
   gap: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => theme.colors.primary};
+  background: ${({ theme }) => `color-mix(in srgb, ${theme.colors.primary} 70%, transparent)`};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.primaryText};
 

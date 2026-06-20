@@ -86,7 +86,7 @@ describe('meetsGoal — time/text fall back to presence', () => {
 
 describe('isGoalableType', () => {
   it('only numeric value types support a goal target', () => {
-    for (const t of ['integer', 'decimal', 'score', 'duration'] as const) {
+    for (const t of ['integer', 'decimal', 'score', 'duration', 'duration_hours', 'multi_boolean'] as const) {
       assert.equal(isGoalableType(t), true);
     }
     for (const t of ['boolean', 'time', 'text'] as const) {

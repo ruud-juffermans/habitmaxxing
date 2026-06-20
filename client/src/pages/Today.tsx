@@ -90,7 +90,13 @@ export function Today() {
 
     const existing = saveTimers.current.get(habit.id);
     if (existing) clearTimeout(existing);
-    const debounce = habit.type === 'boolean' || habit.type === 'score' || habit.type === 'time' ? 0 : 500;
+    // Tap/select inputs commit instantly; free-typed values wait for a pause.
+    const instant =
+      habit.type === 'boolean' ||
+      habit.type === 'score' ||
+      habit.type === 'time' ||
+      habit.type === 'multi_boolean';
+    const debounce = instant ? 0 : 500;
     const t = setTimeout(() => saveEntry(habit, patch), debounce);
     saveTimers.current.set(habit.id, t);
   };
@@ -149,10 +155,21 @@ export function Today() {
   );
 }
 
+// Friendlier display names for the enum values that read awkwardly raw.
+const TYPE_LABELS: Partial<Record<Habit['type'], string>> = {
+  duration_hours: 'duration',
+  multi_boolean: 'multi-boolean',
+};
+
 function typeLabel(h: Habit): string {
-  if (h.unit) return `${h.type} · ${h.unit}`;
+  const base = TYPE_LABELS[h.type] ?? h.type;
+  if (h.type === 'multi_boolean') {
+    const target = h.goalTarget != null ? Number(h.goalTarget) : h.max != null ? Number(h.max) : null;
+    return target != null ? `${base} · 0–${target}` : base;
+  }
+  if (h.unit) return `${base} · ${h.unit}`;
   if (h.type === 'score' && h.min != null && h.max != null) return `score ${h.min}–${h.max}`;
-  return h.type;
+  return base;
 }
 
 function formatHumanDate(iso: string): string {

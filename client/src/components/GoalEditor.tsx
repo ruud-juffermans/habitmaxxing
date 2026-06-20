@@ -65,7 +65,7 @@ export function GoalEditor({
       <Hint>
         {type === 'boolean'
           ? 'Done when checked — no target needed.'
-          : 'Goals apply to numeric habits (integer, decimal, score, duration).'}
+          : 'Goals apply to numeric habits (number, score, duration, counter).'}
       </Hint>
     );
   }

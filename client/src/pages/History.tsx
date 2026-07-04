@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
-import { api } from '../api';
+import { api, todayISO } from '../api';
 import { HabitInput } from '../components/HabitInput';
 import type { DayPayload, Entry, Habit, HabitGroup } from '../types';
 import { meetsGoal } from '../goal';
 import { H1, Muted, PageHeader } from '../components/ui';
 
 export function History() {
+  const today = todayISO();
   const [month, setMonth] = useState(() => monthISO(new Date()));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -81,13 +82,12 @@ export function History() {
     <>
       <PageHeader>
         <H1>History</H1>
-        <Muted>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
-        </Muted>
+        <MonthInput
+          type="month"
+          aria-label="Month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+        />
       </PageHeader>
 
       <Grid>
@@ -117,6 +117,7 @@ export function History() {
               key={d.iso}
               $inMonth={d.inMonth}
               $selected={selectedDate === d.iso}
+              $today={d.iso === today}
               onClick={() => setSelectedDate(d.iso)}
             >
               <DayNum>{d.day}</DayNum>
@@ -212,57 +213,97 @@ function formatHumanDate(iso: string): string {
   return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const MonthInput = styled.input`
+  min-height: 38px;
+  padding: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
+
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.focusRing};
+  }
+`;
+
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: ${({ theme }) => theme.space.xs};
   margin-bottom: ${({ theme }) => theme.space.xl};
+
+  @media (min-width: ${({ theme }) => theme.breakpoints.sm}) {
+    gap: ${({ theme }) => theme.space.sm};
+  }
 `;
 
 const WeekdayCell = styled.div`
   padding: ${({ theme }) => theme.space.xs};
   text-align: center;
-  color: ${({ theme }) => theme.colors.textMuted};
+  color: ${({ theme }) => theme.colors.textFaint};
   font-size: ${({ theme }) => theme.fontSizes.xs};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 `;
 
-const DayCell = styled.button<{ $inMonth: boolean; $selected: boolean }>`
+const DayCell = styled.button<{ $inMonth: boolean; $selected: boolean; $today: boolean }>`
   position: relative;
   aspect-ratio: 1 / 1;
-  background: ${({ theme, $selected }) => ($selected ? theme.colors.primary : theme.colors.surface)};
+  background: ${({ theme, $selected }) =>
+    $selected ? theme.colors.gradientPrimary : theme.colors.surface};
   color: ${({ theme, $selected, $inMonth }) =>
-    $selected ? theme.colors.primaryText : $inMonth ? theme.colors.text : theme.colors.textMuted};
-  border: 1px solid ${({ theme, $selected }) => ($selected ? theme.colors.primary : theme.colors.border)};
+    $selected ? theme.colors.primaryText : $inMonth ? theme.colors.text : theme.colors.textFaint};
+  border: 1px solid
+    ${({ theme, $selected, $today }) =>
+      $selected ? 'transparent' : $today ? theme.colors.primary : theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
   padding: ${({ theme }) => theme.space.xs};
   cursor: pointer;
-  opacity: ${({ $inMonth }) => ($inMonth ? 1 : 0.4)};
+  opacity: ${({ $inMonth }) => ($inMonth ? 1 : 0.45)};
+  box-shadow: ${({ theme, $selected }) => ($selected ? theme.shadows.glowPrimary : theme.shadows.xs)};
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
-  &:hover { border-color: ${({ theme }) => theme.colors.primary}; }
+  &:hover {
+    border-color: ${({ theme, $selected }) => ($selected ? 'transparent' : theme.colors.primary)};
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
 `;
 
 const DayNum = styled.span`
   position: absolute;
-  top: ${({ theme }) => theme.space.xs};
-  left: ${({ theme }) => theme.space.xs};
+  top: 6px;
+  left: 8px;
   font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  font-variant-numeric: tabular-nums;
 `;
 
 const Bars = styled.div`
   position: absolute;
   left: ${({ theme }) => theme.space.xs};
   right: ${({ theme }) => theme.space.xs};
-  bottom: ${({ theme }) => theme.space.xs};
+  bottom: 6px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 `;
 
 const Bar = styled.span<{ $color: string }>`
   width: 100%;
-  height: 5px;
-  margin-bottom: 5px;
+  height: 4px;
   border-radius: ${({ theme }) => theme.radii.pill};
   background: ${({ $color, theme }) =>
     $color === 'var(--bar-fallback)' ? theme.colors.textMuted : $color};
@@ -273,6 +314,7 @@ const DayEditor = styled.section`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.lg};
   padding: ${({ theme }) => theme.space.lg};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
 `;
 
 const H2Style = styled.h2`
@@ -291,9 +333,12 @@ const EntryRow = styled.div<{ $accent: string | null }>`
   grid-template-columns: 1fr auto;
   gap: ${({ theme }) => theme.space.md};
   align-items: center;
-  padding: ${({ theme }) => theme.space.sm};
+  padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.sm}
+    ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   border-left: 3px solid ${({ $accent }) => $accent ?? 'transparent'};
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
 
   &:last-child { border-bottom: none; }
 `;

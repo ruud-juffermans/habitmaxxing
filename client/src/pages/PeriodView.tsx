@@ -277,10 +277,24 @@ const SectionHeader = styled.div`
 `;
 
 const SectionTitle = styled.h3<{ $color: string | null }>`
+  position: relative;
   font-size: ${({ theme }) => theme.fontSizes.lg};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
   margin: 0;
-  color: ${({ $color, theme }) => $color ?? theme.colors.text};
+  padding-left: 16px;
+  color: ${({ theme }) => theme.colors.text};
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${({ $color, theme }) => $color ?? theme.colors.borderStrong};
+  }
 `;
 
 const Grid = styled.div`
@@ -290,16 +304,37 @@ const Grid = styled.div`
 `;
 
 const Tile = styled.div<{ $accent: string | null }>`
+  position: relative;
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-left: 4px solid ${({ $accent, theme }) => $accent ?? theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.lg};
   padding: ${({ theme }) => theme.space.lg};
+  padding-left: calc(${({ theme }) => theme.space.lg} + 6px);
+  box-shadow: ${({ theme }) => theme.shadows.xs};
+  transition: box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
+
+  &:hover {
+    box-shadow: ${({ theme }) => theme.shadows.sm};
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 14px;
+    bottom: 14px;
+    width: 4px;
+    border-radius: ${({ theme }) => theme.radii.pill};
+    background: ${({ $accent, theme }) => $accent ?? theme.colors.borderStrong};
+    opacity: ${({ $accent }) => ($accent ? 1 : 0.6)};
+  }
 `;
 
 const Name = styled.div`
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
   font-size: ${({ theme }) => theme.fontSizes.lg};
+  letter-spacing: -0.01em;
 `;
 
 const Description = styled.div`
@@ -332,5 +367,6 @@ const StatLabel = styled.span`
 `;
 
 const StatValue = styled.span`
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  font-variant-numeric: tabular-nums;
 `;

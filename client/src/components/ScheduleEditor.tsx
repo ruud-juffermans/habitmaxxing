@@ -172,18 +172,27 @@ const Days = styled.div`
 `;
 
 const DayToggle = styled.button<{ $on: boolean }>`
-  width: 30px;
-  height: 32px;
+  width: 36px;
+  height: 38px;
   padding: 0;
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme, $on }) => ($on ? theme.colors.primary : theme.colors.border)};
-  background: ${({ theme, $on }) => ($on ? theme.colors.primary : theme.colors.surface)};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme, $on }) => ($on ? 'transparent' : theme.colors.border)};
+  background: ${({ theme, $on }) => ($on ? theme.colors.gradientPrimary : theme.colors.surfaceAlt)};
   color: ${({ theme, $on }) => ($on ? theme.colors.primaryText : theme.colors.textMuted)};
-  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
   cursor: pointer;
+  transition:
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
   &:hover {
-    border-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${({ theme, $on }) => ($on ? 'transparent' : theme.colors.primary)};
+  }
+
+  &:active {
+    transform: scale(0.92);
   }
 `;
 
@@ -200,16 +209,22 @@ const Suffix = styled.span`
 `;
 
 const NumInput = styled.input`
-  width: 64px;
+  width: 72px;
+  min-height: 42px;
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => theme.colors.surface};
+  background: ${({ theme }) => theme.colors.surfaceAlt};
   color: ${({ theme }) => theme.colors.text};
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
   &:focus {
     outline: none;
+    background: ${({ theme }) => theme.colors.surface};
     border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.focusRing};
   }
 `;
 

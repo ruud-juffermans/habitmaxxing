@@ -219,8 +219,10 @@ const Msg = styled.div<{ $error?: boolean }>`
 
 const TableWrap = styled.div`
   overflow-x: auto;
+  background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.lg};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
 `;
 
 const Table = styled.table`
@@ -254,8 +256,9 @@ const Badges = styled.div`
 
 const Badge = styled.span<{ $tone?: 'ok' | 'warn' | 'danger' | 'admin' }>`
   display: inline-block;
-  padding: 1px 8px;
-  border-radius: ${({ theme }) => theme.radii.md};
+  padding: 2px 9px;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
   font-size: ${({ theme }) => theme.fontSizes.xs};
   border: 1px solid ${({ theme }) => theme.colors.border};
   color: ${({ theme }) => theme.colors.textMuted};
@@ -277,6 +280,7 @@ const Actions = styled.div`
 `;
 
 const ActionBtn = styled(Button)`
+  min-height: 30px;
   padding: 4px 10px;
   font-size: ${({ theme }) => theme.fontSizes.xs};
   white-space: nowrap;

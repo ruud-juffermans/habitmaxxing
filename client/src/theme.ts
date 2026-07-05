@@ -50,12 +50,12 @@ const sharedTokens = {
   },
 };
 
-// Brand core — a refined rose/crimson with a gradient pair used for primary
-// actions and the ambient background glow.
+// Brand core — an energetic ember orange with a gradient pair used for
+// primary actions and the ambient background glow.
 const brand = {
-  primary: '#e0315e',
-  primaryHover: '#c22450',
-  gradientPrimary: 'linear-gradient(135deg, #f0466f 0%, #d21e50 100%)',
+  primary: '#e8590c',
+  primaryHover: '#cf4a06',
+  gradientPrimary: 'linear-gradient(135deg, #f8763a 0%, #de4c07 100%)',
 };
 
 const lightColors = {
@@ -68,9 +68,9 @@ const lightColors = {
   textMuted: '#646b7d',
   textFaint: '#9aa1b2',
   ...brand,
-  primarySoft: 'rgba(224, 49, 94, 0.09)',
+  primarySoft: 'rgba(232, 89, 12, 0.09)',
   primaryText: '#ffffff',
-  focusRing: 'rgba(224, 49, 94, 0.28)',
+  focusRing: 'rgba(232, 89, 12, 0.28)',
   overlay: 'rgba(16, 18, 27, 0.4)',
   success: '#1f9d5f',
   successSoft: 'rgba(31, 157, 95, 0.12)',
@@ -88,10 +88,10 @@ const darkColors = {
   textMuted: '#9aa3b8',
   textFaint: '#68718a',
   ...brand,
-  primary: '#f04a72',
-  primarySoft: 'rgba(240, 74, 114, 0.14)',
+  primary: '#f97b3d',
+  primarySoft: 'rgba(249, 123, 61, 0.14)',
   primaryText: '#ffffff',
-  focusRing: 'rgba(240, 74, 114, 0.35)',
+  focusRing: 'rgba(249, 123, 61, 0.35)',
   overlay: 'rgba(4, 5, 10, 0.6)',
   success: '#3fca82',
   successSoft: 'rgba(63, 202, 130, 0.14)',
@@ -106,7 +106,7 @@ const lightShadows = {
   sm: '0 1px 2px rgba(21, 24, 35, 0.04), 0 4px 12px rgba(21, 24, 35, 0.06)',
   md: '0 2px 4px rgba(21, 24, 35, 0.05), 0 12px 28px rgba(21, 24, 35, 0.09)',
   lg: '0 4px 8px rgba(21, 24, 35, 0.06), 0 24px 48px rgba(21, 24, 35, 0.14)',
-  glowPrimary: '0 6px 20px rgba(224, 49, 94, 0.3)',
+  glowPrimary: '0 6px 20px rgba(232, 89, 12, 0.3)',
 };
 
 const darkShadows = {
@@ -114,7 +114,7 @@ const darkShadows = {
   sm: '0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.35)',
   md: '0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 30px rgba(0, 0, 0, 0.45)',
   lg: '0 4px 8px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.55)',
-  glowPrimary: '0 6px 24px rgba(240, 74, 114, 0.35)',
+  glowPrimary: '0 6px 24px rgba(249, 123, 61, 0.35)',
 };
 
 export interface AppTheme {

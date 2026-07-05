@@ -30,7 +30,7 @@ const TYPE_LABELS: Partial<Record<HabitType, string>> = {
   multi_boolean: 'multi-boolean',
 };
 const typeLabel = (t: HabitType) => TYPE_LABELS[t] ?? t;
-const DEFAULT_COLOR = '#dd2e5a';
+const DEFAULT_COLOR = '#e8590c';
 
 // Pull just the schedule fields out of a habit row.
 function scheduleOf(h: Habit): HabitSchedule {

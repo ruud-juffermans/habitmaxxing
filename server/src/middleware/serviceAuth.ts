@@ -18,6 +18,22 @@ function hasValidServiceToken(req: Request): boolean {
   return Boolean(header) && header === serviceToken;
 }
 
+// Sibling apps (fitnessmaxxing, journalmaxxing) push activity events to
+// /api/integrations/* machine-to-machine using their own shared secret in the
+// same X-Service-Token header. Unlike the admin gate there is no session
+// fallback: no valid token, no access. If INTEGRATIONS_TOKEN is unset the
+// integration is disabled entirely — fail closed.
+const integrationsToken = process.env.INTEGRATIONS_TOKEN?.trim();
+
+export function requireIntegrationsToken(req: Request, res: Response, next: NextFunction): void {
+  const header = req.header('x-service-token')?.trim();
+  if (!integrationsToken || !header || header !== integrationsToken) {
+    res.status(401).json({ error: 'Invalid service token' });
+    return;
+  }
+  next();
+}
+
 // Gate admin routes for EITHER a valid service token OR a session admin user.
 export function requireServiceOrAdmin(req: Request, res: Response, next: NextFunction): void {
   if (hasValidServiceToken(req)) {

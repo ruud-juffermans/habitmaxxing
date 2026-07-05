@@ -19,6 +19,14 @@ enum HabitType {
   text
 }
 
+// Sibling apps that can auto-complete a habit. A habit with a source is a
+// boolean habit whose entries are written by that app via /api/integrations,
+// not by the user tapping a checkbox.
+enum HabitSource {
+  fitness_workout
+  journal_entry
+}
+
 enum HabitScheduleKind {
   daily
   weekdays
@@ -122,6 +130,10 @@ model Habit {
   archived    Boolean   @default(false)
   createdAt   DateTime  @default(now()) @map("created_at")
   groupId     String?   @map("group_id") @db.Uuid
+
+  // Null = a normal, manually tracked habit. Set = auto-completed by a sibling
+  // app (fitnessmaxxing / journalmaxxing); always boolean-typed.
+  source HabitSource?
 
   // Scheduling: when is this habit "due"? Defaults to every day so habits that
   // predate this feature keep their existing behaviour. See server/src/schedule.ts.

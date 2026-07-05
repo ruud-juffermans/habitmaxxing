@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import styled, { css } from 'styled-components';
 import { api } from '../api';
-import type { GoalDirection, Habit, HabitGroup, HabitSchedule, HabitType } from '../types';
+import type { GoalDirection, Habit, HabitGroup, HabitSchedule, HabitSource, HabitType } from '../types';
 import { isGoalableType } from '../goal';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
 import {
@@ -30,6 +30,14 @@ const TYPE_LABELS: Partial<Record<HabitType, string>> = {
   multi_boolean: 'multi-boolean',
 };
 const typeLabel = (t: HabitType) => TYPE_LABELS[t] ?? t;
+
+// Sibling apps a habit can link to. A linked habit is a boolean habit that the
+// source app checks/unchecks automatically (finish a workout, write an entry).
+const SOURCES: HabitSource[] = ['fitness_workout', 'journal_entry'];
+const SOURCE_LABELS: Record<HabitSource, string> = {
+  fitness_workout: 'fitness workout',
+  journal_entry: 'journal entry',
+};
 const DEFAULT_COLOR = '#e8590c';
 
 // Pull just the schedule fields out of a habit row.
@@ -114,6 +122,7 @@ export function Settings() {
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newType, setNewType] = useState<HabitType>('boolean');
+  const [newSource, setNewSource] = useState<HabitSource | ''>('');
   const [newUnit, setNewUnit] = useState('');
   const [newMin, setNewMin] = useState('');
   const [newMax, setNewMax] = useState('');
@@ -149,6 +158,7 @@ export function Settings() {
       name: newName.trim(),
       description: newDescription.trim() || null,
       type: newType,
+      source: newSource || null,
       unit: newUnit.trim() || null,
       min: newMin === '' ? null : Number(newMin),
       max: newMax === '' ? null : Number(newMax),
@@ -167,6 +177,7 @@ export function Settings() {
     setNewGoalTarget('');
     setNewGoalDirection('at_least');
     setNewType('boolean');
+    setNewSource('');
     setNewGroupId('');
     setNewSchedule(defaultSchedule('daily'));
     reload();
@@ -292,9 +303,28 @@ export function Settings() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
-          <Select value={newType} onChange={(e) => setNewType(e.target.value as HabitType)}>
+          <Select
+            value={newType}
+            disabled={newSource !== ''}
+            onChange={(e) => setNewType(e.target.value as HabitType)}
+          >
             {TYPES.map((t) => (
               <option key={t} value={t}>{typeLabel(t)}</option>
+            ))}
+          </Select>
+          <Select
+            value={newSource}
+            aria-label="Link to app"
+            onChange={(e) => {
+              const source = e.target.value as HabitSource | '';
+              setNewSource(source);
+              // Linked habits are auto-checked by the source app, so boolean.
+              if (source) setNewType('boolean');
+            }}
+          >
+            <option value="">No link</option>
+            {SOURCES.map((s) => (
+              <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
             ))}
           </Select>
           <Select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)}>
@@ -373,15 +403,16 @@ export function Settings() {
           <TableWrap>
           <Table>
             <colgroup>
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
               <col style={{ width: '6%' }} />
               <col style={{ width: '5%' }} />
               <col style={{ width: '5%' }} />
-              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
               <col style={{ width: '6%' }} />
               <col style={{ width: '5%' }} />
               <col />
@@ -391,6 +422,7 @@ export function Settings() {
                 <Th>Name</Th>
                 <Th>Description</Th>
                 <Th>Type</Th>
+                <Th>Link</Th>
                 <Th>Group</Th>
                 <Th>Schedule</Th>
                 <Th>Unit</Th>
@@ -423,9 +455,26 @@ export function Settings() {
                   <Td data-label="Type">
                     <Select
                       value={h.type}
+                      disabled={h.source != null}
                       onChange={(e) => onUpdate(h.id, { type: e.target.value as HabitType })}
                     >
                       {TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                    </Select>
+                  </Td>
+                  <Td data-label="Link">
+                    <Select
+                      value={h.source ?? ''}
+                      onChange={(e) => {
+                        const source = (e.target.value || null) as HabitSource | null;
+                        // Linking forces the boolean type in the same patch so
+                        // the server's linked-habits-are-boolean rule holds.
+                        onUpdate(h.id, source ? { source, type: 'boolean' } : { source });
+                      }}
+                    >
+                      <option value="">—</option>
+                      {SOURCES.map((s) => (
+                        <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
+                      ))}
                     </Select>
                   </Td>
                   <Td data-label="Group">
@@ -507,7 +556,7 @@ export function Settings() {
                 </tr>
                 {expandedId === h.id && (
                   <tr>
-                    <EditorTd colSpan={12}>
+                    <EditorTd colSpan={13}>
                       <EditorGroup>
                         <EditorHeading>Schedule</EditorHeading>
                         <ScheduleEditor
@@ -638,7 +687,7 @@ const HabitsToolbar = styled.div`
 
 const AddRow = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr minmax(0, 80px) minmax(0, 80px) auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr minmax(0, 80px) minmax(0, 80px) auto;
   gap: ${({ theme }) => theme.space.sm};
 
   & > input,

@@ -6,6 +6,7 @@ import type {
   GoalDirection,
   Habit,
   HabitGroup,
+  HabitSource,
   HabitStats,
   HabitType,
   ScheduleKind,
@@ -95,6 +96,7 @@ export const api = {
     name: string;
     description?: string | null;
     type: HabitType;
+    source?: HabitSource | null;
     unit?: string | null;
     min?: number | null;
     max?: number | null;

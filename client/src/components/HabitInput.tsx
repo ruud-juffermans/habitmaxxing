@@ -27,7 +27,9 @@ export function HabitInput({ habit, entry, onChange }: Props) {
             })
           }
         >
-          {entry?.valueBool === true ? '✓' : ''}
+          <CheckMark viewBox="0 0 24 24" aria-hidden="true" $visible={entry?.valueBool === true}>
+            <polyline points="5 12.5 10 17.5 19 7.5" />
+          </CheckMark>
         </Check>
       );
     case 'integer':
@@ -258,7 +260,7 @@ const HmField = styled.div`
   gap: 4px;
 
   input {
-    width: 56px;
+    width: 60px;
   }
 `;
 
@@ -276,29 +278,54 @@ const MbWrap = styled.div`
 const Dots = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 `;
 
 const Dot = styled.button<{ $filled: boolean }>`
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border-radius: 50%;
-  border: 2px solid ${({ theme, $filled }) => ($filled ? theme.colors.success : theme.colors.border)};
+  border: 2px solid
+    ${({ theme, $filled }) => ($filled ? theme.colors.success : theme.colors.borderStrong)};
   background: ${({ theme, $filled }) => ($filled ? theme.colors.success : 'transparent')};
   cursor: pointer;
+  transition:
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.normal} ${({ theme }) => theme.motion.spring};
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.success};
+  }
+
+  &:active {
+    transform: scale(0.85);
+  }
 `;
 
 const Plus = styled.button`
-  width: 28px;
-  height: 28px;
-  border-radius: ${({ theme }) => theme.radii.sm};
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   border: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.surface};
+  background: ${({ theme }) => theme.colors.surfaceAlt};
   color: ${({ theme }) => theme.colors.text};
   font-size: ${({ theme }) => theme.fontSizes.lg};
   line-height: 1;
   cursor: pointer;
+  transition:
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
+
+  &:hover:not(:disabled) {
+    border-color: ${({ theme }) => theme.colors.borderStrong};
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.92);
+  }
 
   &:disabled {
     opacity: 0.4;
@@ -309,20 +336,56 @@ const Plus = styled.button`
 const MbCount = styled.span`
   color: ${({ theme }) => theme.colors.textMuted};
   font-size: ${({ theme }) => theme.fontSizes.sm};
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 `;
 
+const CheckMark = styled.svg<{ $visible: boolean }>`
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  /* Draw-in effect: the check strokes itself when it appears. */
+  polyline {
+    stroke-dasharray: 24;
+    stroke-dashoffset: ${({ $visible }) => ($visible ? 0 : 24)};
+    transition: stroke-dashoffset ${({ theme }) => theme.motion.normal}
+      ${({ theme }) => theme.motion.ease};
+  }
+`;
+
 const Check = styled.button<{ $checked: boolean }>`
-  width: 32px;
-  height: 32px;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border: 2px solid ${({ theme, $checked }) => ($checked ? theme.colors.success : theme.colors.border)};
-  background: ${({ theme, $checked }) => ($checked ? theme.colors.success : 'transparent')};
-  color: ${({ theme }) => theme.colors.primaryText};
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid
+    ${({ theme, $checked }) => ($checked ? 'transparent' : theme.colors.borderStrong)};
+  background: ${({ theme, $checked }) =>
+    $checked
+      ? `linear-gradient(135deg, ${theme.colors.success}, color-mix(in srgb, ${theme.colors.success} 72%, #0a4426))`
+      : 'transparent'};
+  box-shadow: ${({ theme, $checked }) =>
+    $checked ? `0 4px 14px ${theme.colors.successSoft}` : 'none'};
   cursor: pointer;
-  font-size: ${({ theme }) => theme.fontSizes.lg};
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.normal} ${({ theme }) => theme.motion.spring};
+
+  &:hover {
+    border-color: ${({ theme, $checked }) => ($checked ? 'transparent' : theme.colors.success)};
+  }
+
+  &:active {
+    transform: scale(0.88);
+  }
 `;

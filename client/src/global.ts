@@ -33,7 +33,7 @@ export const GlobalStyle = createGlobalStyle`
     background:
       radial-gradient(
         60% 44% at 50% -8%,
-        ${({ theme }) => (theme.mode === 'dark' ? 'rgba(240, 74, 114, 0.10)' : 'rgba(224, 49, 94, 0.06)')},
+        ${({ theme }) => (theme.mode === 'dark' ? 'rgba(249, 123, 61, 0.10)' : 'rgba(232, 89, 12, 0.06)')},
         transparent 70%
       ),
       radial-gradient(

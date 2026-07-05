@@ -116,14 +116,24 @@ const Suffix = styled.span`
 
 const NumInput = styled.input`
   width: 96px;
+  min-height: 42px;
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => theme.colors.surface};
+  background: ${({ theme }) => theme.colors.surfaceAlt};
   color: ${({ theme }) => theme.colors.text};
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textFaint};
+  }
 
   &:focus {
     outline: none;
+    background: ${({ theme }) => theme.colors.surface};
     border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.focusRing};
   }
 `;

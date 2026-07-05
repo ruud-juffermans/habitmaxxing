@@ -560,6 +560,7 @@ const Section = styled.section`
   border-radius: ${({ theme }) => theme.radii.lg};
   padding: ${({ theme }) => theme.space.lg};
   margin-bottom: ${({ theme }) => theme.space.lg};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
 
   @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
     padding: ${({ theme }) => theme.space.md};
@@ -679,18 +680,28 @@ const ScheduleToggle = styled.button<{ $open: boolean }>`
   display: inline-flex;
   align-items: center;
   width: 100%;
+  min-height: 42px;
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => theme.colors.surface};
+  background: ${({ theme }) => theme.colors.surfaceAlt};
   color: ${({ theme }) => theme.colors.text};
   border: 1px solid ${({ theme, $open }) => ($open ? theme.colors.primary : theme.colors.border)};
-  border-radius: ${({ theme }) => theme.radii.md};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  box-shadow: ${({ theme, $open }) => ($open ? `0 0 0 3px ${theme.colors.focusRing}` : 'none')};
   font: inherit;
   font-size: ${({ theme }) => theme.fontSizes.sm};
   text-align: left;
   cursor: pointer;
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:disabled {
+    cursor: default;
+    color: ${({ theme }) => theme.colors.textFaint};
   }
 `;
 
@@ -767,7 +778,7 @@ const GroupRow = styled.div`
 
 const ColorInput = styled.input`
   width: 48px;
-  height: 36px;
+  height: 42px;
   padding: 0;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
@@ -821,8 +832,10 @@ const Table = styled.table`
       gap: ${({ theme }) => theme.space.sm};
       padding: ${({ theme }) => theme.space.md};
       margin-bottom: ${({ theme }) => theme.space.md};
+      background: ${({ theme }) => theme.colors.surface};
       border: 1px solid ${({ theme }) => theme.colors.border};
-      border-radius: ${({ theme }) => theme.radii.md};
+      border-radius: ${({ theme }) => theme.radii.lg};
+      box-shadow: ${({ theme }) => theme.shadows.xs};
     }
   }
 `;

@@ -26,9 +26,8 @@ function readInitialTheme(): ThemeMode {
   return v === 'light' ? 'light' : 'dark';
 }
 
-// Outlined sun/moon glyphs for the theme toggle, matching the outlined look of
-// the MUI icons used on ruudjuffermans.nl. The icon shown is the mode you'll
-// switch *to*: a moon in light mode, a sun in dark mode.
+// Outlined glyphs (24px grid, stroke-based) used across the shell. The theme
+// toggle shows the mode you'll switch *to*: a moon in light mode, a sun in dark.
 function MoonIcon() {
   return (
     <svg
@@ -66,6 +65,67 @@ function SunIcon() {
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
     </svg>
+  );
+}
+
+function TodayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="8.5 12.5 11 15 15.5 9.5" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="17" rx="3" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+    </svg>
+  );
+}
+
+function StatsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="5" y1="20" x2="5" y2="12" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="19" y1="20" x2="19" y2="9" />
+    </svg>
+  );
+}
+
+function WeekIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 17 9 11 13 15 21 7" />
+      <polyline points="15 7 21 7 21 13" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <circle cx="9" cy="7" r="2.2" fill="none" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+      <circle cx="15" cy="17" r="2.2" fill="none" />
+    </svg>
+  );
+}
+
+// Small gradient app mark shown next to the wordmark.
+function LogoMark() {
+  return (
+    <Mark aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 12.5 10.2 16.5 18 8" />
+      </svg>
+    </Mark>
   );
 }
 
@@ -114,6 +174,16 @@ function RedirectToLogin() {
   return <Navigate to={`/login${suffix}`} replace />;
 }
 
+// The primary destinations that fit in the mobile tab bar; the drawer still
+// lists everything.
+const TAB_ITEMS = [
+  { to: '/today', label: 'Today', icon: <TodayIcon /> },
+  { to: '/history', label: 'History', icon: <HistoryIcon /> },
+  { to: '/stats', label: 'Stats', icon: <StatsIcon /> },
+  { to: '/week', label: 'Week', icon: <WeekIcon /> },
+  { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
+];
+
 function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -144,7 +214,10 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
             <span />
             <span />
           </Hamburger>
-          <Brand>habitmaxxing</Brand>
+          <Brand>
+            <LogoMark />
+            habitmaxxing
+          </Brand>
           <DesktopLinks>
             {navItems.map((item) => (
               <StyledNavLink key={item.to} to={item.to}>{item.label}</StyledNavLink>
@@ -176,6 +249,10 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
       <Overlay $open={menuOpen} onClick={closeMenu} aria-hidden="true" />
       <Drawer $open={menuOpen}>
         <DrawerHeader>
+          <Brand>
+            <LogoMark />
+            habitmaxxing
+          </Brand>
           <CloseButton onClick={closeMenu} aria-label="Close menu">
             &times;
           </CloseButton>
@@ -218,6 +295,15 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
       </Main>
+      {/* Native-feeling bottom tab bar on phones. */}
+      <TabBar>
+        {TAB_ITEMS.map((item) => (
+          <TabLink key={item.to} to={item.to}>
+            <TabIcon>{item.icon}</TabIcon>
+            <TabLabel>{item.label}</TabLabel>
+          </TabLink>
+        ))}
+      </TabBar>
     </Shell>
   );
 }
@@ -244,16 +330,14 @@ const HeaderGroup = styled.div`
   z-index: 40;
 `;
 
-// Translucent, blurred bar with a bottom border — mirrors the
-// ruudjuffermans.nl AppBar treatment.
+// Translucent, blurred app bar.
 const Nav = styled.nav`
-  background: color-mix(in srgb, ${({ theme }) => theme.colors.background} 82%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: color-mix(in srgb, ${({ theme }) => theme.colors.background} 78%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
-// Centered content container at the ruudjuffermans.nl width (MUI Container "lg").
 const NavInner = styled.div`
   display: flex;
   align-items: center;
@@ -271,25 +355,52 @@ const NavInner = styled.div`
   }
 `;
 
+const Mark = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: ${({ theme }) => theme.colors.gradientPrimary};
+  box-shadow: ${({ theme }) => theme.shadows.xs};
+  flex-shrink: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
 const Brand = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.space.sm};
   font-family: ${({ theme }) => theme.fonts.heading};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   letter-spacing: -0.02em;
   color: ${({ theme }) => theme.colors.text};
+  white-space: nowrap;
 `;
 
 const Hamburger = styled.button`
   display: none;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  width: 36px;
-  height: 36px;
-  padding: 0 8px;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 0 9px;
   background: transparent;
   border: none;
+  border-radius: ${({ theme }) => theme.radii.sm};
   cursor: pointer;
+  transition: background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
+
+  &:active {
+    background: ${({ theme }) => theme.colors.surfaceAlt};
+  }
 
   span {
     display: block;
@@ -312,18 +423,20 @@ const Overlay = styled.div<{ $open: boolean }>`
     position: fixed;
     inset: 0;
     z-index: 50;
-    background: rgba(0, 0, 0, 0.45);
+    background: ${({ theme }) => theme.colors.overlay};
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     opacity: ${({ $open }) => ($open ? 1 : 0)};
     pointer-events: ${({ $open }) => ($open ? 'auto' : 'none')};
-    transition: opacity 0.25s ease;
+    transition: opacity ${({ theme }) => theme.motion.normal} ${({ theme }) => theme.motion.ease};
   }
 `;
 
 // Desktop: inline horizontal links inside the header. Hidden on mobile, where
-// the <Drawer> below takes over.
+// the <Drawer> and <TabBar> take over.
 const DesktopLinks = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.space.md};
+  gap: ${({ theme }) => theme.space.xs};
   flex: 1;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
@@ -345,27 +458,29 @@ const Drawer = styled.div<{ $open: boolean }>`
     display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.space.xs};
-    width: 78%;
-    max-width: 300px;
-    padding: ${({ theme }) => theme.space.md};
+    width: 82%;
+    max-width: 320px;
+    padding: ${({ theme }) => theme.space.lg} ${({ theme }) => theme.space.md};
+    padding-bottom: calc(${({ theme }) => theme.space.lg} + env(safe-area-inset-bottom));
     background: ${({ theme }) => theme.colors.surface};
     border-right: 1px solid ${({ theme }) => theme.colors.border};
-    transform: translateX(${({ $open }) => ($open ? '0' : '-100%')});
-    transition: transform 0.25s ease;
+    border-radius: 0 ${({ theme }) => theme.radii.xl} ${({ theme }) => theme.radii.xl} 0;
+    box-shadow: ${({ theme, $open }) => ($open ? theme.shadows.lg : 'none')};
+    transform: translateX(${({ $open }) => ($open ? '0' : '-105%')});
+    transition: transform ${({ theme }) => theme.motion.normal} ${({ theme }) => theme.motion.ease};
     overflow-y: auto;
   }
 `;
 
-// Close-button row at the top of the drawer — mirrors the ruudjuffermans.nl
-// drawer, which opens with a single close icon aligned to the end.
 const DrawerHeader = styled.div`
   display: none;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    margin-bottom: ${({ theme }) => theme.space.xs};
+    justify-content: space-between;
+    padding: 0 ${({ theme }) => theme.space.xs};
+    margin-bottom: ${({ theme }) => theme.space.md};
   }
 `;
 
@@ -376,8 +491,6 @@ const DrawerLinks = styled.div`
   gap: ${({ theme }) => theme.space.xs};
 `;
 
-// Separator between the nav links and the theme toggle, matching the ruud
-// drawer's <Divider> above its switcher row.
 const DrawerDivider = styled.hr`
   width: 100%;
   height: 1px;
@@ -386,8 +499,6 @@ const DrawerDivider = styled.hr`
   background: ${({ theme }) => theme.colors.border};
 `;
 
-// Footer row holding the theme toggle, centered like the ruud drawer's
-// switcher row.
 const DrawerFooter = styled.div`
   display: flex;
   justify-content: center;
@@ -398,11 +509,16 @@ const DrawerFooter = styled.div`
 const CloseButton = styled.button`
   background: transparent;
   border: none;
-  color: ${({ theme }) => theme.colors.text};
+  color: ${({ theme }) => theme.colors.textMuted};
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
   padding: 0 4px;
+  border-radius: ${({ theme }) => theme.radii.sm};
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text};
+  }
 `;
 
 const StyledNavLink = styled(NavLink)`
@@ -414,39 +530,34 @@ const StyledNavLink = styled(NavLink)`
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: color 0.2s;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  transition:
+    color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
+  /* Pill highlight on the active link (desktop). */
   &.active {
     color: ${({ theme }) => theme.colors.primary};
-    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    font-weight: ${({ theme }) => theme.fontWeights.semibold};
+    background: ${({ theme }) => theme.colors.primarySoft};
   }
 
-  /* Red underline indicator under the active link (desktop). */
-  &.active::after {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 20px;
-    height: 2px;
-    border-radius: 1px;
-    background: ${({ theme }) => theme.colors.primary};
+  &:hover {
+    text-decoration: none;
+    color: ${({ theme }) => theme.colors.text};
+    background: ${({ theme }) => theme.colors.surfaceAlt};
   }
 
-  &:hover { text-decoration: none; color: ${({ theme }) => theme.colors.primary}; }
+  &.active:hover {
+    color: ${({ theme }) => theme.colors.primary};
+    background: ${({ theme }) => theme.colors.primarySoft};
+  }
 
-  /* In the mobile drawer the links stack vertically, so swap the underline for
-     a subtle background highlight on the active item. */
+  /* In the mobile drawer the links stack vertically with roomier targets. */
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     border-radius: ${({ theme }) => theme.radii.md};
     padding: ${({ theme }) => theme.space.md} ${({ theme }) => theme.space.lg};
-
-    &.active::after { display: none; }
-    &.active {
-      background: color-mix(in srgb, ${({ theme }) => theme.colors.primary} 12%, transparent);
-      color: ${({ theme }) => theme.colors.primary};
-    }
+    font-size: ${({ theme }) => theme.fontSizes.md};
   }
 `;
 
@@ -473,63 +584,73 @@ const UserEmail = styled.span`
   }
 `;
 
-// Circular icon toggle mirroring the ruudjuffermans.nl ThemeSwitcher: a small
-// bordered button whose sun/moon icon tilts on hover.
+// Circular icon toggle; the sun/moon icon tilts on hover.
 const ThemeToggle = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   background: transparent;
   color: ${({ theme }) => theme.colors.textMuted};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 50%;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+  transition:
+    color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    background-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
   svg {
     width: 18px;
     height: 18px;
-    transition: transform 0.3s cubic-bezier(0.2, 0.65, 0.25, 1);
+    transition: transform ${({ theme }) => theme.motion.slow} ${({ theme }) => theme.motion.spring};
   }
 
   &:hover {
     color: ${({ theme }) => theme.colors.text};
-    border-color: ${({ theme }) => theme.colors.textMuted};
+    border-color: ${({ theme }) => theme.colors.borderStrong};
     background: ${({ theme }) => theme.colors.surfaceAlt};
   }
 
   &:hover svg {
-    transform: rotate(-12deg);
+    transform: rotate(-14deg);
   }
 `;
 
 // The header copy of the theme toggle is desktop-only; on mobile the toggle
-// lives inside the drawer (mirroring ruudjuffermans.nl).
+// lives inside the drawer.
 const DesktopThemeToggle = styled(ThemeToggle)`
   @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
     display: none;
   }
 `;
 
-// Contained red CTA, mirroring the ruudjuffermans.nl header's primary button.
+// Contained gradient CTA in the header.
 const SignOut = styled.button`
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.lg};
-  background: ${({ theme }) => theme.colors.primary};
+  background: ${({ theme }) => theme.colors.gradientPrimary};
   color: ${({ theme }) => theme.colors.primaryText};
   border: none;
-  border-radius: ${({ theme }) => theme.radii.md};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
+  border-radius: ${({ theme }) => theme.radii.pill};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
   cursor: pointer;
   white-space: nowrap;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    transform ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    box-shadow ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    filter ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease};
 
   &:hover {
-    background: #b8244c;
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(221, 46, 90, 0.24);
+    box-shadow: ${({ theme }) => theme.shadows.glowPrimary};
+    filter: brightness(1.06);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 `;
 
@@ -540,9 +661,7 @@ const GuestBanner = styled.div`
   justify-content: center;
   gap: ${({ theme }) => theme.space.xs} ${({ theme }) => theme.space.md};
   padding: ${({ theme }) => theme.space.sm} ${({ theme }) => theme.space.md};
-  background: ${({ theme }) => `color-mix(in srgb, ${theme.colors.primary} 70%, transparent)`};
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: ${({ theme }) => theme.colors.gradientPrimary};
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.primaryText};
 
@@ -559,7 +678,84 @@ const Main = styled.main`
   width: 100%;
   margin: 0 auto;
 
+  @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
+    /* Leave room for the fixed bottom tab bar (+ iOS home indicator). */
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
   @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
-    padding: ${({ theme }) => theme.space.md};
+    padding-left: ${({ theme }) => theme.space.lg};
+    padding-right: ${({ theme }) => theme.space.lg};
+    padding-top: ${({ theme }) => theme.space.lg};
+  }
+`;
+
+// Fixed, blurred bottom tab bar — phones only.
+const TabBar = styled.nav`
+  display: none;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    padding: 6px ${({ theme }) => theme.space.sm};
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, ${({ theme }) => theme.colors.surface} 82%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border-top: 1px solid ${({ theme }) => theme.colors.border};
+  }
+`;
+
+const TabIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  transition: transform ${({ theme }) => theme.motion.slow} ${({ theme }) => theme.motion.spring};
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+`;
+
+const TabLabel = styled.span`
+  font-size: 11px;
+  font-weight: ${({ theme }) => theme.fontWeights.medium};
+  letter-spacing: 0.01em;
+`;
+
+const TabLink = styled(NavLink)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 4px;
+  color: ${({ theme }) => theme.colors.textFaint};
+  text-decoration: none;
+  border-radius: ${({ theme }) => theme.radii.md};
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    text-decoration: none;
+  }
+
+  &.active {
+    color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &.active ${TabIcon} {
+    transform: translateY(-1px) scale(1.08);
+  }
+
+  &:active ${TabIcon} {
+    transform: scale(0.9);
   }
 `;

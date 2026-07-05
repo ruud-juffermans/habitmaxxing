@@ -11,6 +11,27 @@ interface Props {
 }
 
 export function HabitInput({ habit, entry, onChange }: Props) {
+  // Linked habits are completed by their source app (fitness/journal), never
+  // by hand: render a read-only checkmark instead of an interactive input.
+  if (habit.source) {
+    const done = entry?.valueBool === true;
+    return (
+      <AutoCheck
+        $checked={done}
+        role="img"
+        aria-label={done ? 'Completed automatically' : 'Not completed yet'}
+        title={
+          habit.source === 'fitness_workout'
+            ? 'Completed automatically when you finish a workout'
+            : 'Completed automatically when you write a journal entry'
+        }
+      >
+        <CheckMark viewBox="0 0 24 24" aria-hidden="true" $visible={done}>
+          <polyline points="5 12.5 10 17.5 19 7.5" />
+        </CheckMark>
+      </AutoCheck>
+    );
+  }
   switch (habit.type) {
     case 'boolean':
       return (
@@ -356,6 +377,25 @@ const CheckMark = styled.svg<{ $visible: boolean }>`
     transition: stroke-dashoffset ${({ theme }) => theme.motion.normal}
       ${({ theme }) => theme.motion.ease};
   }
+`;
+
+// The read-only counterpart of Check for linked habits: same look, but a plain
+// span with no hover/press affordances — the source app flips it, not the user.
+const AutoCheck = styled.span<{ $checked: boolean }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px dashed
+    ${({ theme, $checked }) => ($checked ? 'transparent' : theme.colors.borderStrong)};
+  background: ${({ theme, $checked }) =>
+    $checked
+      ? `linear-gradient(135deg, ${theme.colors.success}, color-mix(in srgb, ${theme.colors.success} 72%, #0a4426))`
+      : 'transparent'};
+  box-shadow: ${({ theme, $checked }) =>
+    $checked ? `0 4px 14px ${theme.colors.successSoft}` : 'none'};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const Check = styled.button<{ $checked: boolean }>`

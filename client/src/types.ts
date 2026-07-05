@@ -9,6 +9,9 @@ export type HabitType =
   | 'multi_boolean'
   | 'text';
 
+/** Sibling app that auto-completes a linked habit; null = manual habit. */
+export type HabitSource = 'fitness_workout' | 'journal_entry';
+
 export type ScheduleKind = 'daily' | 'weekdays' | 'weekly_count' | 'interval';
 
 export type GoalDirection = 'at_least' | 'at_most';
@@ -42,6 +45,7 @@ export interface Habit {
   name: string;
   description: string | null;
   type: HabitType;
+  source: HabitSource | null;
   unit: string | null;
   min: string | number | null;
   max: string | number | null;

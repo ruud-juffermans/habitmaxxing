@@ -6,6 +6,7 @@ import { asyncRoute } from '../http.js';
 export const habitsRouter = Router();
 
 const habitTypes = ['boolean', 'integer', 'decimal', 'score', 'time', 'duration', 'duration_hours', 'multi_boolean', 'text'] as const;
+const habitSources = ['fitness_workout', 'journal_entry'] as const;
 const scheduleKinds = ['daily', 'weekdays', 'weekly_count', 'interval'] as const;
 const goalDirections = ['at_least', 'at_most'] as const;
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
@@ -14,6 +15,8 @@ const habitBase = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).nullish(),
   type: z.enum(habitTypes),
+  // Linked habits: auto-completed by a sibling app via /api/integrations.
+  source: z.enum(habitSources).nullish(),
   unit: z.string().max(20).nullish(),
   min: z.number().nullish(),
   max: z.number().nullish(),
@@ -91,6 +94,11 @@ habitsRouter.post(
   '/',
   asyncRoute(async (req, res) => {
     const body = createBody.parse(req.body);
+    // A linked habit's entries are written by the source app as a plain
+    // checked/unchecked value, so it must be boolean.
+    if (body.source && body.type !== 'boolean') {
+      return res.status(400).json({ error: 'Linked habits must be boolean' });
+    }
     // Guard against attaching to another user's group.
     if (body.groupId) {
       const group = await prisma.habitGroup.findFirst({
@@ -111,6 +119,20 @@ habitsRouter.patch(
   '/:id',
   asyncRoute(async (req, res) => {
     const body = patchBody.parse(req.body);
+    // Validate the type/source combination that would result from this patch:
+    // a habit with a source must be (stay) boolean.
+    if (body.source !== undefined || body.type !== undefined) {
+      const existing = await prisma.habit.findFirst({
+        where: { id: req.params.id, userId: req.user!.id },
+        select: { type: true, source: true },
+      });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      const type = body.type ?? existing.type;
+      const source = body.source === undefined ? existing.source : body.source;
+      if (source && type !== 'boolean') {
+        return res.status(400).json({ error: 'Linked habits must be boolean' });
+      }
+    }
     if (body.groupId) {
       const group = await prisma.habitGroup.findFirst({
         where: { id: body.groupId, userId: req.user!.id },

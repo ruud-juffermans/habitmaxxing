@@ -12,7 +12,26 @@ import type {
   ScheduleKind,
 } from './types';
 
-const base = import.meta.env.VITE_API_URL ?? '';
+// The platform API (ruudjuffermans-server) — shared by all maxxing apps. One
+// session cookie lives on this origin, so signing in on the account app signs
+// you in here too.
+const base = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+
+// The account app — the only place with auth UI. Unauthenticated visitors are
+// sent there and come back via return_url (see redirectToLogin).
+const accountUrl = (import.meta.env.VITE_ACCOUNT_URL ?? 'http://localhost:3004').replace(/\/$/, '');
+
+// Hand off to the central login page, asking it to send the user back here.
+// `app=habit` labels the session and lets the login page brand the flow.
+export function redirectToLogin(): void {
+  const returnUrl = encodeURIComponent(window.location.href);
+  window.location.assign(`${accountUrl}/login?return_url=${returnUrl}&app=habit`);
+}
+
+// Deep link into the account dashboard (profile, sessions, sign out everywhere).
+export function accountDashboardUrl(): string {
+  return accountUrl;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -52,45 +71,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// Account endpoints still used from inside the app: session check, sign-out,
+// guest conversion and password change (the Account panel). Registration,
+// login, guest start and password reset all live in the account app now.
 export const auth = {
-  register(data: { email: string; password: string; name?: string }): Promise<{ ok: true }> {
-    return request(`/api/auth/register`, { method: 'POST', body: JSON.stringify(data) });
-  },
-  verifyEmail(token: string): Promise<{ ok: true }> {
-    return request(`/api/auth/verify-email`, { method: 'POST', body: JSON.stringify({ token }) });
-  },
-  resendVerification(email: string): Promise<{ ok: true }> {
-    return request(`/api/auth/resend-verification`, { method: 'POST', body: JSON.stringify({ email }) });
-  },
-  login(data: { email: string; password: string }): Promise<{ user: AuthUser }> {
-    return request(`/api/auth/login`, { method: 'POST', body: JSON.stringify(data) });
-  },
-  guest(): Promise<{ user: AuthUser }> {
-    return request(`/api/auth/guest`, { method: 'POST' });
-  },
   convert(data: { email: string; password: string; name?: string }): Promise<{ user: AuthUser }> {
-    return request(`/api/auth/convert`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/api/account/auth/convert`, { method: 'POST', body: JSON.stringify(data) });
   },
   logout(): Promise<{ ok: true }> {
-    return request(`/api/auth/logout`, { method: 'POST' });
+    return request(`/api/account/auth/logout`, { method: 'POST' });
   },
   me(): Promise<{ user: AuthUser }> {
-    return request(`/api/auth/me`);
-  },
-  forgotPassword(email: string): Promise<{ ok: true }> {
-    return request(`/api/auth/forgot-password`, { method: 'POST', body: JSON.stringify({ email }) });
-  },
-  resetPassword(data: { token: string; password: string }): Promise<{ ok: true }> {
-    return request(`/api/auth/reset-password`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/api/account/auth/me`);
   },
   changePassword(data: { currentPassword: string; newPassword: string }): Promise<{ ok: true }> {
-    return request(`/api/auth/change-password`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/api/account/auth/change-password`, { method: 'POST', body: JSON.stringify(data) });
   },
 };
 
 export const api = {
   listHabits(includeArchived = false): Promise<Habit[]> {
-    return request(`/api/habits${includeArchived ? '?includeArchived=true' : ''}`);
+    return request(`/api/habit/habits${includeArchived ? '?includeArchived=true' : ''}`);
   },
   createHabit(data: {
     name: string;
@@ -110,19 +111,19 @@ export const api = {
     goalTarget?: number | null;
     goalDirection?: GoalDirection;
   }): Promise<Habit> {
-    return request(`/api/habits`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/api/habit/habits`, { method: 'POST', body: JSON.stringify(data) });
   },
   updateHabit(id: string, data: Partial<Omit<Habit, 'id' | 'createdAt'>>): Promise<Habit> {
-    return request(`/api/habits/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+    return request(`/api/habit/habits/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   },
   deleteHabit(id: string): Promise<void> {
-    return request(`/api/habits/${id}`, { method: 'DELETE' });
+    return request(`/api/habit/habits/${id}`, { method: 'DELETE' });
   },
   getDay(date: string): Promise<DayPayload> {
-    return request(`/api/entries?date=${date}`);
+    return request(`/api/habit/entries?date=${date}`);
   },
   getRange(from: string, to: string): Promise<Entry[]> {
-    return request(`/api/entries/range?from=${from}&to=${to}`);
+    return request(`/api/habit/entries/range?from=${from}&to=${to}`);
   },
   upsertEntry(data: {
     habitId: string;
@@ -132,49 +133,50 @@ export const api = {
     valueText?: string | null;
     valueTime?: string | null;
   }): Promise<Entry> {
-    return request(`/api/entries`, { method: 'PUT', body: JSON.stringify(data) });
+    return request(`/api/habit/entries`, { method: 'PUT', body: JSON.stringify(data) });
   },
   getStats(): Promise<HabitStats[]> {
-    return request(`/api/stats`);
+    return request(`/api/habit/stats`);
   },
   listGroups(): Promise<HabitGroup[]> {
-    return request(`/api/groups`);
+    return request(`/api/habit/groups`);
   },
   createGroup(data: { name: string; color: string; sortOrder?: number }): Promise<HabitGroup> {
-    return request(`/api/groups`, { method: 'POST', body: JSON.stringify(data) });
+    return request(`/api/habit/groups`, { method: 'POST', body: JSON.stringify(data) });
   },
   updateGroup(id: string, data: Partial<Omit<HabitGroup, 'id' | 'createdAt'>>): Promise<HabitGroup> {
-    return request(`/api/groups/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+    return request(`/api/habit/groups/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   },
   deleteGroup(id: string): Promise<void> {
-    return request(`/api/groups/${id}`, { method: 'DELETE' });
+    return request(`/api/habit/groups/${id}`, { method: 'DELETE' });
   },
 };
 
-// Admin-only user management. All endpoints require the signed-in user to be an
-// admin; the server returns 403 otherwise.
+// Admin-only user management, served by the platform (accounts are shared
+// across all maxxing apps now). All endpoints require the signed-in user to be
+// an admin; the server returns 403 otherwise.
 export const admin = {
   listUsers(search?: string): Promise<{ users: AdminUser[] }> {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
-    return request(`/api/admin/users${q}`);
+    return request(`/api/account/admin/users${q}`);
   },
   suspend(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}/suspend`, { method: 'POST' });
+    return request(`/api/account/admin/users/${id}/suspend`, { method: 'POST' });
   },
   unsuspend(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}/unsuspend`, { method: 'POST' });
+    return request(`/api/account/admin/users/${id}/unsuspend`, { method: 'POST' });
   },
   deleteUser(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}`, { method: 'DELETE' });
+    return request(`/api/account/admin/users/${id}`, { method: 'DELETE' });
   },
   resetPassword(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}/reset-password`, { method: 'POST' });
+    return request(`/api/account/admin/users/${id}/reset-password`, { method: 'POST' });
   },
   verifyEmail(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}/verify-email`, { method: 'POST' });
+    return request(`/api/account/admin/users/${id}/verify-email`, { method: 'POST' });
   },
   revokeSessions(id: string): Promise<{ ok: true }> {
-    return request(`/api/admin/users/${id}/revoke-sessions`, { method: 'POST' });
+    return request(`/api/account/admin/users/${id}/revoke-sessions`, { method: 'POST' });
   },
 };
 

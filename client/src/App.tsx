@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, Navigate, useLocation, Link } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import styled from 'styled-components';
 import { GlobalStyle } from './global';
 import { themes, type ThemeMode } from './theme';
 import { useAuth } from './auth';
+import { redirectToLogin } from './api';
 import { Today } from './pages/Today';
 import { History } from './pages/History';
 import { Stats } from './pages/Stats';
@@ -13,11 +14,6 @@ import { Month } from './pages/Month';
 import { AllTime } from './pages/AllTime';
 import { Settings } from './pages/Settings';
 import { AdminUsers } from './pages/admin/Users';
-import { Login } from './pages/auth/Login';
-import { Register } from './pages/auth/Register';
-import { ForgotPassword } from './pages/auth/ForgotPassword';
-import { ResetPassword } from './pages/auth/ResetPassword';
-import { VerifyEmail } from './pages/auth/VerifyEmail';
 
 const STORAGE_KEY = 'habitmaxxing.theme';
 
@@ -145,33 +141,20 @@ export function App() {
       ) : user ? (
         <AuthedApp mode={mode} setMode={setMode} />
       ) : (
-        <PublicRoutes />
+        <RedirectToAccount />
       )}
     </ThemeProvider>
   );
 }
 
-// Routes available when signed out. The email-link destinations (verify-email,
-// reset-password) live here so they work before the user has a session.
-function PublicRoutes() {
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="*" element={<RedirectToLogin />} />
-    </Routes>
-  );
-}
-
-// Preserve where the user was headed so we can bounce them back after login.
-function RedirectToLogin() {
-  const location = useLocation();
-  const from = location.pathname + location.search;
-  const suffix = from && from !== '/' ? `?next=${encodeURIComponent(from)}` : '';
-  return <Navigate to={`/login${suffix}`} replace />;
+// No login UI in this app anymore: authentication lives on the account app
+// (account.ruudjuffermans.nl). A signed-out visitor is handed off there and
+// comes straight back via return_url once the shared session cookie exists.
+function RedirectToAccount() {
+  useEffect(() => {
+    redirectToLogin();
+  }, []);
+  return <Loading>Redirecting to sign in…</Loading>;
 }
 
 // The primary destinations that fit in the mobile tab bar; the drawer still
@@ -289,9 +272,7 @@ function AuthedApp({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode)
             path="/admin"
             element={user?.role === 'admin' ? <AdminUsers /> : <Navigate to="/today" replace />}
           />
-          {/* Already authenticated: keep these from showing the public pages. */}
-          <Route path="/login" element={<Navigate to="/today" replace />} />
-          <Route path="/register" element={<Navigate to="/today" replace />} />
+          {/* Old auth routes (and stale email links) just land on the app. */}
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
       </Main>

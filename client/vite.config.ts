@@ -5,13 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    // 3003 matches the platform server's CORS default for this app (HABIT_URL).
+    port: 3003,
     watch: { usePolling: true },
-    proxy: {
-      '/api': {
-        target: 'http://server:4000',
-        changeOrigin: true,
-      },
-    },
   },
 });

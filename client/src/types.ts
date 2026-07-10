@@ -28,6 +28,8 @@ export interface AuthUser {
 }
 
 // A user row as seen by an admin: account metadata + activity counts only.
+// Counts come from the platform server, which reports per-app activity for
+// the shared account (journal entries, workouts, habits).
 export interface AdminUser {
   id: string;
   email: string;
@@ -37,7 +39,7 @@ export interface AdminUser {
   role: UserRole;
   disabledAt: string | null;
   createdAt: string;
-  _count: { habits: number; entries: number; groups: number };
+  _count: { journalEntries: number; workouts: number; habits: number };
 }
 
 export interface Habit {

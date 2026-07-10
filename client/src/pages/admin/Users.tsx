@@ -127,7 +127,7 @@ export function AdminUsers() {
                     </Td>
                     <Td>
                       <Muted>
-                        {u._count.habits} habits · {u._count.entries} entries · {u._count.groups} groups
+                        {u._count.habits} habits · {u._count.journalEntries} journal entries · {u._count.workouts} workouts
                       </Muted>
                     </Td>
                     <Td>

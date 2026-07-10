@@ -1,6 +1,16 @@
 # Habitmaxxing
 
-A self-hosted, local-first habit tracker. Define the habits that matter to you, log them daily, and watch trends emerge over weeks and months.
+A habit tracker. Define the habits that matter to you, log them daily, and
+watch trends emerge over weeks and months. Runs at `habit.ruudjuffermans.nl`.
+
+**Client-only since the platform consolidation.** The backend lives in
+[`../ruudjuffermans-server`](../ruudjuffermans-server) (one API for all maxxing
+apps at `api.ruudjuffermans.nl`), and all auth UI lives in
+[`../ruudjuffermans-account`](../ruudjuffermans-account)
+(`account.ruudjuffermans.nl`) — sign in once there and you're signed in to
+every app. A signed-out visitor here is redirected to the account app and comes
+straight back after login. See `../PLATFORM_ARCHITECTURE_PLAN.md` for the
+architecture.
 
 The full product spec lives in [`prd.md`](./prd.md).
 
@@ -9,21 +19,24 @@ The full product spec lives in [`prd.md`](./prd.md).
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Tech stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Quick start](#quick-start)
+- [Local development](#local-development)
 - [Configuration](#configuration)
 - [Project structure](#project-structure)
-- [Development](#development)
 - [Database](#database)
 - [API reference](#api-reference)
-- [Common commands](#common-commands)
 - [Troubleshooting](#troubleshooting)
 - [Roadmap](#roadmap)
 - [License](#license)
 
 ## Features
 
-- **Accounts & auth** — email/password sign-up with email verification, secure httpOnly cookie sessions, and password reset by email. All habit data is scoped per user.
+- **One account for all apps** — authentication is handled by the central
+  account app; habit data is scoped per user behind the platform's shared
+  session cookie.
+- **Linked habits** — a habit can be sourced from a sibling app
+  (`fitness_workout`, `journal_entry`): finish a workout in fitnessmaxxing or
+  write a journal entry in journalmaxxing and the habit checks itself for that
+  day, via the platform's event bus.
 - **Flexible habit types** — boolean, integer, decimal, score, time-of-day, duration, free text.
 - **Scheduling & frequency** — make a habit daily, on specific weekdays, N× per week, or every N days. The Today view shows only what's due, and streaks and completion percentages respect each habit's schedule.
 - **Goals & targets** — give a numeric habit a target (e.g. 2 L water, 8000 steps) with an at-least or at-most direction. "Done" means the goal was met, so streaks, History bars, and Stats all score goal attainment instead of just whether an entry exists. Habits without a goal keep the old "any entry counts" behaviour.
@@ -33,7 +46,6 @@ The full product spec lives in [`prd.md`](./prd.md).
 - **Stats** — 7-day and 30-day rolling averages, current streak, total entries.
 - **Periods** — Mon–Sun current-week and current-month aggregates per habit.
 - **Light/dark theme** — defaults to dark, persists per browser.
-- **Local-first** — your data never leaves your machine; everything runs in Docker on `127.0.0.1`.
 
 ## Screenshots
 
@@ -71,223 +83,138 @@ Manage habits and groups: create, reorder, archive, and tweak units/min/max, sch
 
 ## Tech stack
 
-| Layer    | Tech                                                  |
-| -------- | ----------------------------------------------------- |
-| Frontend | React 18, TypeScript, Vite, styled-components, React Router |
-| Backend  | Node.js, Express, TypeScript, Zod, Prisma             |
-| Database | PostgreSQL 16                                         |
-| Runtime  | Docker Compose                                        |
+| Layer    | Tech                                                         |
+| -------- | ------------------------------------------------------------ |
+| Frontend | React 18, TypeScript, Vite, styled-components, React Router  |
+| Backend  | [`ruudjuffermans-server`](../ruudjuffermans-server) — Express + Prisma + PostgreSQL, `habit` module |
+| Auth UI  | [`ruudjuffermans-account`](../ruudjuffermans-account)         |
+| Runtime  | nginx static image via Docker Compose (this repo builds the client only) |
 
-## Prerequisites
+## Local development
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
-- A free port for each service (defaults: `3000`, `4000`, `5432`)
-
-That's it — Node and Postgres are not required on the host.
-
-## Quick start
+Run the platform API and (for login) the account app first:
 
 ```bash
-./setup-dev.sh                 # generate the local-dev files (see below)
-docker compose up -d --build
+# 1. API — in ../ruudjuffermans-server (see its README):
+docker compose -f docker-compose.dev.yml up -d && npm run dev   # :4000
+
+# 2. Account app — in ../ruudjuffermans-account/client:
+npm run dev                                                     # :3004
+
+# 3. This client:
+cd client
+npm install
+npm run dev                                                     # :3003
 ```
 
-`setup-dev.sh` writes the two gitignored local-dev files: `.env` (from
-`.env.example`) and `docker-compose.override.yml` — a self-contained dev stack
-with its own Postgres and hot-reload `dev` build targets that Compose
-auto-merges onto `docker-compose.yml`. No infra repo required. Re-run with
-`--force` to regenerate them.
+The dev ports matter: the platform server's CORS allowlist expects this client
+on `http://localhost:3003` (its `HABIT_URL` default).
 
-Open <http://localhost:3000>.
+In local dev the platform has no SMTP configured, so verification and
+password-reset **emails are printed to the API server's console** — copy the
+link from there. Seed a demo account with `npx prisma db seed` in
+`../ruudjuffermans-server` (default `demo@ruudjuffermans.local` /
+`password123`), or use "Continue as guest" on the account app's login page.
 
-The first boot runs Prisma migrations and seeds a starter set of habits owned by a ready-to-use demo account. Subsequent starts reuse the existing volume.
-
-**Sign in with the seeded demo account:**
-
-- Email: `demo@habitmaxxing.local` (already verified)
-- Password: `password123`
-
-(Override with `SEED_USER_EMAIL` / `SEED_USER_PASSWORD`.)
-
-Or register your own account from the **Create account** screen. In local dev no SMTP server is configured, so verification and password-reset **emails are printed to the server logs** (`docker compose logs -f server`) — copy the link from there to complete the flow. Configure `SMTP_*` to send real email.
+> `server/` and `setup-dev.sh` are **legacy** (pre-consolidation) — no longer
+> deployed or maintained; kept only for reference until deleted.
 
 ## Configuration
 
-All configuration is environment-driven via `.env` (see [`.env.example`](./.env.example)):
+Vite env, inlined at build time (see [`.env.example`](./.env.example)):
 
-| Variable            | Default                                                                | Purpose                              |
-| ------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
-| `POSTGRES_USER`     | `habitmaxxing`                                                          | DB username                          |
-| `POSTGRES_PASSWORD` | `habitmaxxing`                                                          | DB password                          |
-| `POSTGRES_DB`       | `habitmaxxing`                                                          | DB name                              |
-| `POSTGRES_PORT`     | `5432`                                                                 | Host-side DB port                    |
-| `DATABASE_URL`      | `postgresql://habitmaxxing:habitmaxxing@db:5432/habitmaxxing?schema=public` | Server's connection string          |
-| `SERVER_PORT`       | `4000`                                                                 | Express API port                     |
-| `CLIENT_PORT`       | `3000`                                                                 | Vite dev server port                 |
-| `VITE_API_URL`      | `http://localhost:4000`                                                | API base URL the client targets      |
-| `VITE_APP_TZ`       | `Europe/Amsterdam`                                                     | Timezone the client uses for "today"  |
-| `APP_TZ`            | `Europe/Amsterdam`                                                     | Timezone the server uses for stats day boundaries |
-| `APP_URL`           | `http://localhost:3000`                                                | Frontend URL used to build links in emails |
-| `CORS_ORIGIN`       | `http://localhost:3000`                                                | Allowed browser origin(s) for credentialed CORS (comma separated) |
-| `SESSION_TTL_DAYS`  | `30`                                                                   | Session/cookie lifetime |
-| `EMAIL_VERIFICATION_TTL_HOURS` | `24`                                                        | Verification-link validity |
-| `PASSWORD_RESET_TTL_MINUTES` | `60`                                                          | Reset-link validity |
-| `BCRYPT_ROUNDS`     | `12`                                                                   | Password hashing cost |
-| `SMTP_HOST`         | _(empty)_                                                              | SMTP server. Empty ⇒ emails logged to console |
-| `SMTP_PORT`         | `587`                                                                  | SMTP port |
-| `SMTP_SECURE`       | `false`                                                                | Use TLS on connect (set `true` for port 465) |
-| `SMTP_USER` / `SMTP_PASS` | _(empty)_                                                        | SMTP credentials |
-| `MAIL_FROM`         | `habitmaxxing <no-reply@habitmaxxing.local>`                           | From address on outgoing email |
-| `SEED_USER_EMAIL`   | `demo@habitmaxxing.local`                                              | Demo account created by the seed |
-| `SEED_USER_PASSWORD`| `password123`                                                          | Demo account password |
+| Variable           | Default (dev)            | Purpose                                    |
+| ------------------ | ------------------------ | ------------------------------------------ |
+| `CLIENT_PORT`      | `3003`                   | Vite dev server port (matches platform CORS) |
+| `VITE_API_URL`     | `http://localhost:4000`  | Platform API origin                        |
+| `VITE_ACCOUNT_URL` | `http://localhost:3004`  | Account app (login/register/reset live there) |
+| `VITE_APP_TZ`      | `Europe/Amsterdam`       | Timezone the client uses for "today"       |
 
-> Keep `APP_TZ` and `VITE_APP_TZ` in sync so the client and server agree on where each day starts.
-
-All ports bind to `127.0.0.1` only.
+Keep `VITE_APP_TZ` in sync with the platform server's `APP_TZ` so the client
+and server agree on where each day starts. Server-side configuration (session
+TTLs, SMTP, admin, …) lives in `../ruudjuffermans-server/.env.example`.
 
 ## Project structure
 
 ```
 .
-├── client/              # React + Vite frontend
+├── client/              # React + Vite frontend (the deployed artifact)
 │   └── src/
-│       ├── pages/       # Today, History, Stats, Periods, Settings
+│       ├── pages/       # Today, History, Stats, Periods, Settings, admin
 │       ├── components/  # HabitInput + shared styled UI
-│       ├── api.ts       # Typed API client
+│       ├── api.ts       # Typed API client (platform endpoints)
 │       └── theme.ts     # Light/dark theme tokens
-├── server/              # Express + Prisma backend
-│   ├── src/
-│   │   ├── routes/      # habits, entries, groups, stats
-│   │   ├── db.ts
-│   │   └── index.ts
-│   └── prisma/
-│       ├── schema.prisma
-│       ├── migrations/
-│       └── seed.ts
-├── docker-compose.yml       # Production stack (joins the infra networks)
-├── setup-dev.sh             # Generates the local .env + docker-compose.override.yml
-├── .env.example             # Root env template
-└── prd.md                   # Product spec
-```
-
-## Development
-
-Local dev uses a Compose **override**: `./setup-dev.sh` generates a gitignored `docker-compose.override.yml` that Compose auto-merges onto the production `docker-compose.yml`, adding a self-contained Postgres and switching the server/client to their hot-reload `dev` build targets — no infra repo required. The override mounts `client` and `server` into the containers, so file edits hot-reload automatically (Vite HMR for the client, `tsx watch` for the server).
-
-> The production `docker-compose.yml` alone joins the external infra networks and publishes no host ports. Locally, the override is auto-merged — to run the pure production stack without it, pass the base file explicitly: `docker compose -f docker-compose.yml up --build`.
-
-### Running outside Docker
-
-If you'd rather run Node locally and only Postgres in Docker:
-
-```bash
-docker compose up -d db
-
-# server
-cd server
-npm install
-npx prisma migrate deploy
-npx prisma db seed
-npm run dev
-
-# client (new terminal)
-cd client
-npm install
-VITE_API_URL=http://localhost:4000 VITE_APP_TZ=Europe/Amsterdam npm run dev
-```
-
-> **Running the client outside Docker, you must pass `VITE_API_URL`** (and `VITE_APP_TZ`) — the Compose environment isn't loaded, so the client otherwise falls back to its own origin (`localhost:3000`), every API call fails, and **login silently does nothing** with no visible error.
-
-### Production build
-
-```bash
-# client
-cd client && npm run build      # outputs to client/dist
-# server
-cd server && npm run build && npm start
+├── server/              # LEGACY pre-consolidation backend — not deployed
+├── docker-compose.yml   # Production stack: client-only nginx image
+├── .env.example         # Client env template
+└── prd.md               # Product spec
 ```
 
 ## Database
 
-Schema is managed by Prisma. See [`server/prisma/schema.prisma`](./server/prisma/schema.prisma) for the source of truth. The data model:
+The schema lives in the platform:
+[`../ruudjuffermans-server/prisma/schema.prisma`](../ruudjuffermans-server/prisma/schema.prisma),
+`habit` Postgres schema. The data model:
 
-- **User** — an account with a unique email, bcrypt-hashed password, and `emailVerified` flag.
-- **Session** — a server-side session keyed by the SHA-256 hash of the cookie token; supports logout and revocation.
-- **VerificationToken** — single-use, expiring tokens for email verification and password reset (only their hashes are stored).
 - **HabitGroup** — colour-coded category (e.g. Health, Focus), owned by a user.
-- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group, a schedule (`daily`, `weekdays`, `weekly_count`, or `interval`), and an optional numeric goal (`goalTarget` plus an `at_least`/`at_most` `goalDirection`) that defines completion; owned by a user.
-- **Entry** — one row per `(habit, date)`; uniqueness is enforced at the DB level; owned by a user.
+- **Habit** — a tracked item with a `HabitType` (`boolean`, `integer`, `decimal`, `score`, `time`, `duration`, `text`), optional unit/min/max, optional group, a schedule (`daily`, `weekdays`, `weekly_count`, or `interval`), an optional numeric goal (`goalTarget` plus an `at_least`/`at_most` `goalDirection`) that defines completion, and an optional `source` (`fitness_workout` / `journal_entry`) marking it auto-completed by a sibling app's events.
+- **HabitEntry** — one row per `(habit, date)`; uniqueness enforced at the DB level.
 
-Common Prisma tasks (run inside the `server` container or from `server/`):
-
-```bash
-npx prisma migrate dev --name <change>   # create + apply a new migration
-npx prisma migrate deploy                # apply pending migrations
-npx prisma db seed                       # reseed
-npx prisma studio                        # browse data in the GUI
-```
+Users, sessions and verification tokens are platform-wide (`account` schema).
+Prisma commands (migrate/seed/studio) run in `../ruudjuffermans-server`.
 
 ## API reference
 
-Base URL: `http://localhost:4000/api`
+Base URL: the platform API (`http://localhost:4000` in dev,
+`https://api.ruudjuffermans.nl` in production). All data routes require the
+platform session cookie (`rj_session`) and return only the signed-in user's
+records.
 
-All `/api` routes except `/health` and `/auth/*` require an authenticated, email-verified session (sent via the `habitmaxxing_session` httpOnly cookie). Data routes only ever return the signed-in user's own records.
+**Account** (used by this client; full auth lives in the account app):
 
-**Auth** (public):
-
-| Method | Path                          | Purpose                                      |
-| ------ | ----------------------------- | -------------------------------------------- |
-| POST   | `/auth/register`              | Create account, send verification email      |
-| POST   | `/auth/verify-email`          | Verify email with a token                     |
-| POST   | `/auth/resend-verification`   | Re-send the verification email                |
-| POST   | `/auth/login`                 | Sign in, set session cookie                    |
-| POST   | `/auth/logout`                | Destroy the current session                   |
-| GET    | `/auth/me`                    | Current user, or 401                          |
-| POST   | `/auth/forgot-password`       | Send a password-reset email                   |
-| POST   | `/auth/reset-password`        | Set a new password from a reset token         |
-| POST   | `/auth/change-password`       | Change password (authenticated)               |
+| Method | Path                                | Purpose                        |
+| ------ | ----------------------------------- | ------------------------------ |
+| GET    | `/api/account/auth/me`              | Current user, or 401           |
+| POST   | `/api/account/auth/logout`          | Destroy the current session    |
+| POST   | `/api/account/auth/convert`         | Upgrade a guest account        |
+| POST   | `/api/account/auth/change-password` | Change password (authenticated) |
+| *      | `/api/account/admin/users…`         | Central admin API (admin pages) |
 
 **Data** (authenticated):
 
-| Method | Path                       | Purpose                              |
-| ------ | -------------------------- | ------------------------------------ |
-| GET    | `/health`                  | Liveness check                       |
-| GET    | `/groups`                  | List habit groups                    |
-| POST   | `/groups`                  | Create group                         |
-| PATCH  | `/groups/:id`              | Update group                         |
-| DELETE | `/groups/:id`              | Delete group                         |
-| GET    | `/habits?includeArchived`  | List habits                          |
-| POST   | `/habits`                  | Create habit                         |
-| PATCH  | `/habits/:id`              | Update habit                         |
-| DELETE | `/habits/:id`              | Delete habit                         |
-| GET    | `/entries?date=YYYY-MM-DD` | Fetch one day (habits + entries)     |
-| GET    | `/entries/range?from=&to=` | Fetch entries across a range         |
-| PUT    | `/entries`                 | Upsert an entry by `(habitId, date)` |
-| GET    | `/stats`                   | Per-habit 7d/30d aggregates + streak |
+| Method | Path                                  | Purpose                              |
+| ------ | ------------------------------------- | ------------------------------------ |
+| GET    | `/api/health`                         | Liveness check                       |
+| GET    | `/api/habit/groups`                   | List habit groups                    |
+| POST   | `/api/habit/groups`                   | Create group                         |
+| PATCH  | `/api/habit/groups/:id`               | Update group                         |
+| DELETE | `/api/habit/groups/:id`               | Delete group                         |
+| GET    | `/api/habit/habits?includeArchived`   | List habits                          |
+| POST   | `/api/habit/habits`                   | Create habit                         |
+| PATCH  | `/api/habit/habits/:id`               | Update habit                         |
+| DELETE | `/api/habit/habits/:id`               | Delete habit                         |
+| GET    | `/api/habit/entries?date=YYYY-MM-DD`  | Fetch one day (habits + entries)     |
+| GET    | `/api/habit/entries/range?from=&to=`  | Fetch entries across a range         |
+| PUT    | `/api/habit/entries`                  | Upsert an entry by `(habitId, date)` |
+| GET    | `/api/habit/stats`                    | Per-habit 7d/30d aggregates + streak |
 
-Request/response shapes match `client/src/types.ts`.
-
-## Common commands
-
-```bash
-docker compose up -d               # start everything
-docker compose down                # stop everything (data preserved)
-docker compose down -v             # stop AND wipe the database
-docker compose logs -f             # tail all logs
-docker compose logs -f server      # tail server only
-docker compose restart server      # restart after server-side dep changes
-docker compose exec db psql -U habitmaxxing  # psql shell into the DB
-```
+Request/response shapes match `client/src/types.ts`. The old
+`/api/integrations/events` endpoint is gone — sibling-app activity arrives via
+the platform's internal event bus (`fitness.workout.*`, `journal.entry.*`).
 
 ## Troubleshooting
 
-- **Port already in use** — change `CLIENT_PORT`, `SERVER_PORT`, or `POSTGRES_PORT` in `.env`.
-- **Migrations look out of sync** — `docker compose down -v` wipes the volume and reseeds on next boot. Destructive: only do this if you don't care about your entries.
-- **Client can't reach the API** — check `VITE_API_URL` matches the host-side `SERVER_PORT`.
-- **Wrong "today" date around midnight** — verify both `APP_TZ` and `VITE_APP_TZ` are set to your local timezone.
-- **Can't sign in / 401 on every request** — the API uses a cookie, so `CORS_ORIGIN` must list the exact origin you load the client from, and `VITE_API_URL` must point at the API. Mismatched origins block the cookie.
-- **Verification / reset email never arrives** — with no `SMTP_HOST` set, emails (and their links) are printed to the server log instead of sent: `docker compose logs -f server`.
-- **Upgrading a database that predates accounts** — the auth migration assigns any pre-existing (ownerless) habits/entries to a `legacy@habitmaxxing.local` account with an unusable password; use **Forgot password** to claim it, or just sign in with the freshly seeded `demo@habitmaxxing.local`.
+- **Redirect loop / bounced to the account app** — the platform API isn't
+  running, or your session expired; sign in on the account app.
+- **Client can't reach the API** — check `VITE_API_URL` points at the platform
+  server and that this client runs on port 3003 (the API's CORS allowlist for
+  habit).
+- **Wrong "today" date around midnight** — verify `VITE_APP_TZ` here matches
+  the platform's `APP_TZ`.
+- **Verification / reset email never arrives** — with no `SMTP_HOST` set on
+  the platform server, emails (and their links) are printed to its console.
+- **Linked habit didn't auto-complete** — check the platform's event
+  dead-letters: `GET /api/account/admin/events` (admin session or service token).
 
 ## Roadmap
 
@@ -296,10 +223,3 @@ See [`prd.md`](./prd.md) for the full spec and planned scope. Anything not yet i
 ## License
 
 Released under the [MIT License](./LICENSE).
-
-Sources (best-practice research):
-- [Make a README](https://www.makeareadme.com/)
-- [readme-best-practices (jehna)](https://github.com/jehna/readme-best-practices)
-- [How to write a good README — DEV Community](https://dev.to/merlos/how-to-write-a-good-readme-bog)
-- [README Best Practices — Tilburg Science Hub](https://www.tilburgsciencehub.com/topics/collaborate-share/share-your-work/content-creation/readme-best-practices/)
-- [README File Guidelines — pyOpenSci](https://www.pyopensci.org/python-package-guide/documentation/repository-files/readme-file-best-practices.html)

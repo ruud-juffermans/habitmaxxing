@@ -191,8 +191,9 @@ const TYPE_LABELS: Partial<Record<Habit['type'], string>> = {
 };
 
 function typeLabel(h: Habit): string {
-  // Linked habits: show where the auto-completion comes from, not the raw type.
-  if (h.source) return h.source === 'fitness_workout' ? 'auto · fitness' : 'auto · journal';
+  // Auto-completed habits: show where the completion comes from.
+  if (h.type === 'workout') return 'auto · fitness';
+  if (h.type === 'journal') return 'auto · journal';
   const base = TYPE_LABELS[h.type] ?? h.type;
   if (h.type === 'multi_boolean') {
     const target = h.goalTarget != null ? Number(h.goalTarget) : h.max != null ? Number(h.max) : null;

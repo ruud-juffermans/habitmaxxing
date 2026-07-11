@@ -6,8 +6,8 @@ import type {
   GoalDirection,
   Habit,
   HabitGroup,
-  HabitSource,
   HabitStats,
+  WorkoutPlanSummary,
   HabitType,
   ScheduleKind,
 } from './types';
@@ -92,11 +92,16 @@ export const api = {
   listHabits(includeArchived = false): Promise<Habit[]> {
     return request(`/api/habit/habits${includeArchived ? '?includeArchived=true' : ''}`);
   },
+  // The user's workout plans from the fitness module (same platform API/session)
+  // — feeds the workout picker for workout-type habits.
+  listWorkoutPlans(): Promise<WorkoutPlanSummary[]> {
+    return request(`/api/fitness/plans`);
+  },
   createHabit(data: {
     name: string;
     description?: string | null;
     type: HabitType;
-    source?: HabitSource | null;
+    workoutSplitId?: string | null;
     unit?: string | null;
     min?: number | null;
     max?: number | null;

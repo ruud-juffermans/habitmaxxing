@@ -11,9 +11,10 @@ interface Props {
 }
 
 export function HabitInput({ habit, entry, onChange }: Props) {
-  // Linked habits are completed by their source app (fitness/journal), never
-  // by hand: render a read-only checkmark instead of an interactive input.
-  if (habit.source) {
+  // Workout / journal habits are completed by their app (finish a workout,
+  // write an entry), never by hand: render a read-only checkmark instead of
+  // an interactive input.
+  if (habit.type === 'workout' || habit.type === 'journal') {
     const done = entry?.valueBool === true;
     return (
       <AutoCheck
@@ -21,7 +22,7 @@ export function HabitInput({ habit, entry, onChange }: Props) {
         role="img"
         aria-label={done ? 'Completed automatically' : 'Not completed yet'}
         title={
-          habit.source === 'fitness_workout'
+          habit.type === 'workout'
             ? 'Completed automatically when you finish a workout'
             : 'Completed automatically when you write a journal entry'
         }

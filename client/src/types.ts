@@ -1,3 +1,5 @@
+// `workout` and `journal` are auto-completed habits: the sibling app checks
+// and unchecks them (finish a workout, write a journal entry) — never the user.
 export type HabitType =
   | 'boolean'
   | 'integer'
@@ -7,10 +9,9 @@ export type HabitType =
   | 'duration'
   | 'duration_hours'
   | 'multi_boolean'
-  | 'text';
-
-/** Sibling app that auto-completes a linked habit; null = manual habit. */
-export type HabitSource = 'fitness_workout' | 'journal_entry';
+  | 'text'
+  | 'workout'
+  | 'journal';
 
 export type ScheduleKind = 'daily' | 'weekdays' | 'weekly_count' | 'interval';
 
@@ -47,7 +48,8 @@ export interface Habit {
   name: string;
   description: string | null;
   type: HabitType;
-  source: HabitSource | null;
+  /** For type=workout only: the split this habit tracks; null = any workout. */
+  workoutSplitId: string | null;
   unit: string | null;
   min: string | number | null;
   max: string | number | null;
@@ -69,6 +71,14 @@ export type HabitSchedule = Pick<
   Habit,
   'scheduleKind' | 'scheduleDays' | 'scheduleTarget' | 'scheduleEvery' | 'scheduleAnchor'
 >;
+
+// Minimal slice of the fitness app's plans list (GET /api/fitness/plans) —
+// just enough to render the workout picker for workout-type habits.
+export interface WorkoutPlanSummary {
+  id: string;
+  name: string;
+  splits: { id: string; name: string }[];
+}
 
 export interface HabitGroup {
   id: string;

@@ -10,6 +10,8 @@
 export type GoalDirection = 'at_least' | 'at_most';
 
 // Habit types that carry a numeric value a goal can be compared against.
+// `workout` / `journal` are auto-completed presence habits: boolean-shaped,
+// no goal concept.
 export type GoalHabitType =
   | 'boolean'
   | 'integer'
@@ -19,7 +21,9 @@ export type GoalHabitType =
   | 'duration'
   | 'duration_hours'
   | 'multi_boolean'
-  | 'text';
+  | 'text'
+  | 'workout'
+  | 'journal';
 
 const NUMERIC_TYPES = new Set<GoalHabitType>([
   'integer',
@@ -60,7 +64,10 @@ export interface GoalEntry {
  * - time/text: no goal concept — done when a non-empty entry exists.
  */
 export function meetsGoal(habit: Goalable, entry: GoalEntry): boolean {
-  if (habit.type === 'boolean') return entry.valueBool === true;
+  // workout / journal entries are written as checked booleans by their module.
+  if (habit.type === 'boolean' || habit.type === 'workout' || habit.type === 'journal') {
+    return entry.valueBool === true;
+  }
 
   if (isGoalableType(habit.type)) {
     if (entry.valueNum == null) return false;

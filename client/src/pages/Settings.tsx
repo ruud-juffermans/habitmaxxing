@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import styled, { css } from 'styled-components';
 import { api } from '../api';
-import type { GoalDirection, Habit, HabitGroup, HabitSchedule, HabitSource, HabitType } from '../types';
+import type { GoalDirection, Habit, HabitGroup, HabitSchedule, HabitType, WorkoutPlanSummary } from '../types';
 import { isGoalableType } from '../goal';
 import { Button, H1, Input, PageHeader, Select, Muted, TextArea } from '../components/ui';
 import {
@@ -13,6 +13,9 @@ import {
 import { GoalEditor, goalOf, goalSummary, type HabitGoal } from '../components/GoalEditor';
 import { AccountSection } from './AccountSection';
 
+// `workout` / `journal` habits are auto-completed by the sibling app (finish a
+// workout, write a journal entry); a workout habit can target one specific
+// workout (split) or count any workout.
 const TYPES: HabitType[] = [
   'boolean',
   'integer',
@@ -23,21 +26,16 @@ const TYPES: HabitType[] = [
   'duration_hours',
   'multi_boolean',
   'text',
+  'workout',
+  'journal',
 ];
 // Human labels for the enum values whose raw form reads awkwardly.
 const TYPE_LABELS: Partial<Record<HabitType, string>> = {
   duration_hours: 'duration (hours)',
   multi_boolean: 'multi-boolean',
+  journal: 'journal entry',
 };
 const typeLabel = (t: HabitType) => TYPE_LABELS[t] ?? t;
-
-// Sibling apps a habit can link to. A linked habit is a boolean habit that the
-// source app checks/unchecks automatically (finish a workout, write an entry).
-const SOURCES: HabitSource[] = ['fitness_workout', 'journal_entry'];
-const SOURCE_LABELS: Record<HabitSource, string> = {
-  fitness_workout: 'fitness workout',
-  journal_entry: 'journal entry',
-};
 const DEFAULT_COLOR = '#e8590c';
 
 // Pull just the schedule fields out of a habit row.
@@ -122,7 +120,8 @@ export function Settings() {
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newType, setNewType] = useState<HabitType>('boolean');
-  const [newSource, setNewSource] = useState<HabitSource | ''>('');
+  const [newWorkoutSplitId, setNewWorkoutSplitId] = useState(''); // '' = any workout
+  const [plans, setPlans] = useState<WorkoutPlanSummary[]>([]);
   const [newUnit, setNewUnit] = useState('');
   const [newMin, setNewMin] = useState('');
   const [newMax, setNewMax] = useState('');
@@ -148,8 +147,13 @@ export function Settings() {
     setLoading(false);
   };
 
+  // Workout plans feed the picker for workout-type habits. Failure just means
+  // the picker only offers "any workout" — never block the settings page on it.
+  const reloadPlans = () => api.listWorkoutPlans().then(setPlans).catch(() => setPlans([]));
+
   useEffect(() => {
     reload();
+    reloadPlans();
   }, []);
 
   const onCreate = async () => {
@@ -158,7 +162,7 @@ export function Settings() {
       name: newName.trim(),
       description: newDescription.trim() || null,
       type: newType,
-      source: newSource || null,
+      workoutSplitId: newType === 'workout' ? newWorkoutSplitId || null : null,
       unit: newUnit.trim() || null,
       min: newMin === '' ? null : Number(newMin),
       max: newMax === '' ? null : Number(newMax),
@@ -177,7 +181,7 @@ export function Settings() {
     setNewGoalTarget('');
     setNewGoalDirection('at_least');
     setNewType('boolean');
-    setNewSource('');
+    setNewWorkoutSplitId('');
     setNewGroupId('');
     setNewSchedule(defaultSchedule('daily'));
     reload();
@@ -235,6 +239,11 @@ export function Settings() {
     await api.deleteGroup(id);
     reload();
   };
+
+  // Split ids the picker knows about; a habit targeting a split outside this
+  // set (archived plan) gets a placeholder option so it doesn't render as
+  // "Any workout" by accident.
+  const knownSplitIds = new Set(plans.flatMap((p) => p.splits.map((s) => s.id)));
 
   const filteredHabits = habits.filter((h) => {
     const matchesName = h.name.toLowerCase().includes(search.trim().toLowerCase());
@@ -305,28 +314,32 @@ export function Settings() {
           />
           <Select
             value={newType}
-            disabled={newSource !== ''}
-            onChange={(e) => setNewType(e.target.value as HabitType)}
+            onChange={(e) => {
+              const type = e.target.value as HabitType;
+              setNewType(type);
+              if (type !== 'workout') setNewWorkoutSplitId('');
+            }}
           >
             {TYPES.map((t) => (
               <option key={t} value={t}>{typeLabel(t)}</option>
             ))}
           </Select>
-          <Select
-            value={newSource}
-            aria-label="Link to app"
-            onChange={(e) => {
-              const source = e.target.value as HabitSource | '';
-              setNewSource(source);
-              // Linked habits are auto-checked by the source app, so boolean.
-              if (source) setNewType('boolean');
-            }}
-          >
-            <option value="">No link</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
-            ))}
-          </Select>
+          {newType === 'workout' && (
+            <Select
+              value={newWorkoutSplitId}
+              aria-label="Which workout"
+              onChange={(e) => setNewWorkoutSplitId(e.target.value)}
+            >
+              <option value="">Any workout</option>
+              {plans.map((p) => (
+                <optgroup key={p.id} label={p.name}>
+                  {p.splits.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+          )}
           <Select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)}>
             <option value="">No group</option>
             {groups.map((g) => (
@@ -422,7 +435,7 @@ export function Settings() {
                 <Th>Name</Th>
                 <Th>Description</Th>
                 <Th>Type</Th>
-                <Th>Link</Th>
+                <Th>Workout</Th>
                 <Th>Group</Th>
                 <Th>Schedule</Th>
                 <Th>Unit</Th>
@@ -455,27 +468,33 @@ export function Settings() {
                   <Td data-label="Type">
                     <Select
                       value={h.type}
-                      disabled={h.source != null}
                       onChange={(e) => onUpdate(h.id, { type: e.target.value as HabitType })}
                     >
                       {TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                     </Select>
                   </Td>
-                  <Td data-label="Link">
-                    <Select
-                      value={h.source ?? ''}
-                      onChange={(e) => {
-                        const source = (e.target.value || null) as HabitSource | null;
-                        // Linking forces the boolean type in the same patch so
-                        // the server's linked-habits-are-boolean rule holds.
-                        onUpdate(h.id, source ? { source, type: 'boolean' } : { source });
-                      }}
-                    >
-                      <option value="">—</option>
-                      {SOURCES.map((s) => (
-                        <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
-                      ))}
-                    </Select>
+                  <Td data-label="Workout">
+                    {h.type === 'workout' ? (
+                      <Select
+                        value={h.workoutSplitId ?? ''}
+                        aria-label="Which workout"
+                        onChange={(e) => onUpdate(h.id, { workoutSplitId: e.target.value || null })}
+                      >
+                        <option value="">Any workout</option>
+                        {h.workoutSplitId && !knownSplitIds.has(h.workoutSplitId) && (
+                          <option value={h.workoutSplitId}>(archived workout)</option>
+                        )}
+                        {plans.map((p) => (
+                          <optgroup key={p.id} label={p.name}>
+                            {p.splits.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Muted>—</Muted>
+                    )}
                   </Td>
                   <Td data-label="Group">
                     <Select

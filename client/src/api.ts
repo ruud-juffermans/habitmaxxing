@@ -71,13 +71,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Account endpoints still used from inside the app: session check, sign-out
-// and guest conversion (the Account panel). Registration, login, guest start,
-// password reset and password change all live in the account app now.
+// Account endpoints still used from inside the app: session check and
+// sign-out. Registration, login, guest start/conversion, password reset and
+// password change all live in the account app now.
 export const auth = {
-  convert(data: { email: string; password: string; name?: string }): Promise<{ user: AuthUser }> {
-    return request(`/api/account/auth/convert`, { method: 'POST', body: JSON.stringify(data) });
-  },
   logout(): Promise<{ ok: true }> {
     return request(`/api/account/auth/logout`, { method: 'POST' });
   },

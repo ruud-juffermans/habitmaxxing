@@ -38,6 +38,21 @@ export function accountSettingsUrl(): string {
   return `${accountUrl}/settings`;
 }
 
+// Public app directory (the account module's config endpoint), cached per page
+// load — feeds the "open in app" links on workout / journal habits.
+let appUrlsPromise: Promise<Record<string, string>> | null = null;
+export function loadAppUrls(): Promise<Record<string, string>> {
+  if (!appUrlsPromise) {
+    appUrlsPromise = request<{ apps: { id: string; url: string }[] }>(`/api/account/config`)
+      .then((config) => Object.fromEntries(config.apps.map((a) => [a.id, a.url])))
+      .catch((err) => {
+        appUrlsPromise = null; // allow a retry after a failure
+        throw err;
+      });
+  }
+  return appUrlsPromise;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;

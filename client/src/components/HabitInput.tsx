@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
+import { loadAppUrls } from '../api';
 import type { Entry, Habit } from '../types';
 import { Input, Select } from './ui';
 
@@ -12,26 +14,9 @@ interface Props {
 
 export function HabitInput({ habit, entry, onChange }: Props) {
   // Workout / journal habits are completed by their app (finish a workout,
-  // write an entry), never by hand: render a read-only checkmark instead of
-  // an interactive input.
+  // write an entry), never by hand.
   if (habit.type === 'workout' || habit.type === 'journal') {
-    const done = entry?.valueBool === true;
-    return (
-      <AutoCheck
-        $checked={done}
-        role="img"
-        aria-label={done ? 'Completed automatically' : 'Not completed yet'}
-        title={
-          habit.type === 'workout'
-            ? 'Completed automatically when you finish a workout'
-            : 'Completed automatically when you write a journal entry'
-        }
-      >
-        <CheckMark viewBox="0 0 24 24" aria-hidden="true" $visible={done}>
-          <polyline points="5 12.5 10 17.5 19 7.5" />
-        </CheckMark>
-      </AutoCheck>
-    );
+    return <AutoHabit habit={habit} entry={entry} />;
   }
   switch (habit.type) {
     case 'boolean':
@@ -380,23 +365,126 @@ const CheckMark = styled.svg<{ $visible: boolean }>`
   }
 `;
 
-// The read-only counterpart of Check for linked habits: same look, but a plain
-// span with no hover/press affordances — the source app flips it, not the user.
-const AutoCheck = styled.span<{ $checked: boolean }>`
+// One row's worth of a workout / journal habit. Done: the same solid green
+// checkmark a boolean habit shows (read-only — the source app flips it). Not
+// done yet: the circle is a LINK into the source app, so tapping it takes you
+// to fitnessmaxxing / journalmaxxing to go do the thing.
+function AutoHabit({ habit, entry }: { habit: Habit; entry: Entry | null }) {
+  const appId = habit.type === 'workout' ? 'fitness' : 'journal';
+  const url = useAppUrl(appId);
+  const done = entry?.valueBool === true;
+
+  if (done) {
+    return (
+      <AutoCheck
+        role="img"
+        aria-label="Completed automatically"
+        title={
+          habit.type === 'workout'
+            ? 'Completed — you finished a workout'
+            : 'Completed — you wrote a journal entry'
+        }
+      >
+        <CheckMark viewBox="0 0 24 24" aria-hidden="true" $visible>
+          <polyline points="5 12.5 10 17.5 19 7.5" />
+        </CheckMark>
+      </AutoCheck>
+    );
+  }
+
+  const title =
+    habit.type === 'workout'
+      ? 'Open fitnessmaxxing to do this workout'
+      : 'Open journalmaxxing to write your entry';
+  // Until the app directory loads (or if it fails), fall back to the old
+  // read-only circle rather than a dead link.
+  if (!url) {
+    return <GoCheck as="span" aria-label="Not completed yet" title={title} $disabled />;
+  }
+  return (
+    <GoCheck href={url} aria-label={title} title={title}>
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="8 7 17 7 17 16" />
+      </svg>
+    </GoCheck>
+  );
+}
+
+// The public app directory, shared via loadAppUrls' cache — one fetch per page
+// load no matter how many auto habits render.
+function useAppUrl(appId: 'fitness' | 'journal'): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    loadAppUrls()
+      .then((urls) => {
+        if (!cancelled) setUrl(urls[appId] ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appId]);
+  return url;
+}
+
+// The done state of an auto habit: the boolean Check's checked look, as a
+// plain span with no press affordances — the source app flips it, not the user.
+const AutoCheck = styled.span`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px dashed
-    ${({ theme, $checked }) => ($checked ? 'transparent' : theme.colors.borderStrong)};
-  background: ${({ theme, $checked }) =>
-    $checked
-      ? `linear-gradient(135deg, ${theme.colors.success}, color-mix(in srgb, ${theme.colors.success} 72%, #0a4426))`
-      : 'transparent'};
-  box-shadow: ${({ theme, $checked }) =>
-    $checked ? `0 4px 14px ${theme.colors.successSoft}` : 'none'};
+  border: 2px solid transparent;
+  background: ${({ theme }) =>
+    `linear-gradient(135deg, ${theme.colors.success}, color-mix(in srgb, ${theme.colors.success} 72%, #0a4426))`};
+  box-shadow: ${({ theme }) => `0 4px 14px ${theme.colors.successSoft}`};
   display: inline-flex;
   align-items: center;
   justify-content: center;
+`;
+
+// The not-done state of an auto habit: an unchecked circle that links into the
+// source app (arrow icon). $disabled = directory not loaded, plain circle.
+const GoCheck = styled.a<{ $disabled?: boolean }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid ${({ theme }) => theme.colors.borderStrong};
+  color: ${({ theme }) => theme.colors.textMuted};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition:
+    border-color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    color ${({ theme }) => theme.motion.fast} ${({ theme }) => theme.motion.ease},
+    transform ${({ theme }) => theme.motion.normal} ${({ theme }) => theme.motion.spring};
+
+  ${({ $disabled, theme }) =>
+    !$disabled &&
+    `
+    &:hover {
+      border-color: ${theme.colors.success};
+      color: ${theme.colors.success};
+    }
+
+    &:active {
+      transform: scale(0.88);
+    }
+  `}
 `;
 
 const Check = styled.button<{ $checked: boolean }>`
